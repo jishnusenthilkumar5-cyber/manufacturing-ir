@@ -1,0 +1,245 @@
+{
+  "flows": [
+    {
+      "buffer_capacity": 8,
+      "from_op": "feed-a",
+      "id": "a-to-assembly",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "assemble",
+      "transport_time_s": 0.0
+    },
+    {
+      "from_op": "assemble",
+      "id": "assembled-out",
+      "material": "part",
+      "routing_weight": 1.0,
+      "transport_time_s": 0.0
+    },
+    {
+      "buffer_capacity": 8,
+      "from_op": "feed-b",
+      "id": "b-to-assembly",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "assemble",
+      "transport_time_s": 0.0
+    },
+    {
+      "id": "in-a",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "feed-a",
+      "transport_time_s": 0.0
+    },
+    {
+      "id": "in-b",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "feed-b",
+      "transport_time_s": 0.0
+    }
+  ],
+  "machines": [
+    {
+      "attrs": {},
+      "capabilities": [
+        "assemble"
+      ],
+      "id": "assembler",
+      "machine_class": "assembly",
+      "name": "Assembler",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    },
+    {
+      "attrs": {},
+      "capabilities": [
+        "feed-a"
+      ],
+      "id": "feeder-a",
+      "machine_class": "feeder",
+      "name": "Feeder A",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    },
+    {
+      "attrs": {},
+      "capabilities": [
+        "feed-b"
+      ],
+      "id": "feeder-b",
+      "machine_class": "feeder",
+      "name": "Feeder B",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    }
+  ],
+  "meta": {
+    "description": "",
+    "id": "assembly-merge",
+    "name": "Two-Feeder Assembly Line",
+    "provenance": {
+      "kind": "synthetic",
+      "source": "mir.synth"
+    }
+  },
+  "operations": [
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 20.0
+      },
+      "id": "assemble",
+      "kind": "assemble",
+      "machines": [
+        "assembler"
+      ],
+      "name": "Assemble",
+      "yield_fraction": 1.0
+    },
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 12.0
+      },
+      "id": "feed-a",
+      "kind": "feed-a",
+      "machines": [
+        "feeder-a"
+      ],
+      "name": "Feed A",
+      "yield_fraction": 1.0
+    },
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 15.0
+      },
+      "id": "feed-b",
+      "kind": "feed-b",
+      "machines": [
+        "feeder-b"
+      ],
+      "name": "Feed B",
+      "yield_fraction": 1.0
+    }
+  ],
+  "schema_version": "0.1.0",
+  "signals": [
+    {
+      "dtype": "int",
+      "id": "assembler-cycle-count",
+      "machine": "assembler",
+      "semantic": "cycle_count",
+      "tag": "ASSEMBLER_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "assembler-good-count",
+      "machine": "assembler",
+      "semantic": "good_count",
+      "tag": "ASSEMBLER_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "assembler-scrap-count",
+      "machine": "assembler",
+      "semantic": "scrap_count",
+      "tag": "ASSEMBLER_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "assembler-state",
+      "machine": "assembler",
+      "semantic": "machine_state",
+      "tag": "ASSEMBLER_STATE"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-a-cycle-count",
+      "machine": "feeder-a",
+      "semantic": "cycle_count",
+      "tag": "FEEDER_A_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-a-good-count",
+      "machine": "feeder-a",
+      "semantic": "good_count",
+      "tag": "FEEDER_A_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-a-scrap-count",
+      "machine": "feeder-a",
+      "semantic": "scrap_count",
+      "tag": "FEEDER_A_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "feeder-a-state",
+      "machine": "feeder-a",
+      "semantic": "machine_state",
+      "tag": "FEEDER_A_STATE"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-b-cycle-count",
+      "machine": "feeder-b",
+      "semantic": "cycle_count",
+      "tag": "FEEDER_B_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-b-good-count",
+      "machine": "feeder-b",
+      "semantic": "good_count",
+      "tag": "FEEDER_B_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "feeder-b-scrap-count",
+      "machine": "feeder-b",
+      "semantic": "scrap_count",
+      "tag": "FEEDER_B_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "feeder-b-state",
+      "machine": "feeder-b",
+      "semantic": "machine_state",
+      "tag": "FEEDER_B_STATE"
+    }
+  ]
+}

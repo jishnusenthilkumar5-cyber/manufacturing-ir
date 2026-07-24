@@ -1,0 +1,238 @@
+{
+  "flows": [
+    {
+      "buffer_capacity": 20,
+      "from_op": "operation-01",
+      "id": "buffer-01",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "operation-02",
+      "transport_time_s": 0.0
+    },
+    {
+      "buffer_capacity": 20,
+      "from_op": "operation-02",
+      "id": "buffer-02",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "operation-03",
+      "transport_time_s": 0.0
+    },
+    {
+      "id": "inlet",
+      "material": "part",
+      "routing_weight": 1.0,
+      "to_op": "operation-01",
+      "transport_time_s": 0.0
+    },
+    {
+      "from_op": "operation-03",
+      "id": "outlet",
+      "material": "part",
+      "routing_weight": 1.0,
+      "transport_time_s": 0.0
+    }
+  ],
+  "machines": [
+    {
+      "attrs": {},
+      "capabilities": [
+        "stage-01"
+      ],
+      "id": "machine-01",
+      "machine_class": "generic-processor",
+      "name": "Machine 01",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    },
+    {
+      "attrs": {},
+      "capabilities": [
+        "stage-02"
+      ],
+      "id": "machine-02",
+      "machine_class": "generic-processor",
+      "name": "Machine 02",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    },
+    {
+      "attrs": {},
+      "capabilities": [
+        "stage-03"
+      ],
+      "id": "machine-03",
+      "machine_class": "generic-processor",
+      "name": "Machine 03",
+      "num_stations": 1,
+      "setup_time_s": 0.0
+    }
+  ],
+  "meta": {
+    "description": "",
+    "id": "unbalanced-line",
+    "name": "Unbalanced Demonstration Line",
+    "provenance": {
+      "kind": "synthetic",
+      "source": "mir.synth"
+    }
+  },
+  "operations": [
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 20.0
+      },
+      "id": "operation-01",
+      "kind": "stage-01",
+      "machines": [
+        "machine-01"
+      ],
+      "name": "Operation 01",
+      "yield_fraction": 1.0
+    },
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 55.0
+      },
+      "id": "operation-02",
+      "kind": "stage-02",
+      "machines": [
+        "machine-02"
+      ],
+      "name": "Operation 02",
+      "yield_fraction": 1.0
+    },
+    {
+      "attrs": {},
+      "batch_size": 1,
+      "cycle_time": {
+        "kind": "constant",
+        "value_s": 25.0
+      },
+      "id": "operation-03",
+      "kind": "stage-03",
+      "machines": [
+        "machine-03"
+      ],
+      "name": "Operation 03",
+      "yield_fraction": 1.0
+    }
+  ],
+  "schema_version": "0.1.0",
+  "signals": [
+    {
+      "dtype": "int",
+      "id": "machine-01-cycle-count",
+      "machine": "machine-01",
+      "semantic": "cycle_count",
+      "tag": "MACHINE_01_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-01-good-count",
+      "machine": "machine-01",
+      "semantic": "good_count",
+      "tag": "MACHINE_01_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-01-scrap-count",
+      "machine": "machine-01",
+      "semantic": "scrap_count",
+      "tag": "MACHINE_01_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "machine-01-state",
+      "machine": "machine-01",
+      "semantic": "machine_state",
+      "tag": "MACHINE_01_STATE"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-02-cycle-count",
+      "machine": "machine-02",
+      "semantic": "cycle_count",
+      "tag": "MACHINE_02_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-02-good-count",
+      "machine": "machine-02",
+      "semantic": "good_count",
+      "tag": "MACHINE_02_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-02-scrap-count",
+      "machine": "machine-02",
+      "semantic": "scrap_count",
+      "tag": "MACHINE_02_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "machine-02-state",
+      "machine": "machine-02",
+      "semantic": "machine_state",
+      "tag": "MACHINE_02_STATE"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-03-cycle-count",
+      "machine": "machine-03",
+      "semantic": "cycle_count",
+      "tag": "MACHINE_03_CYCLE_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-03-good-count",
+      "machine": "machine-03",
+      "semantic": "good_count",
+      "tag": "MACHINE_03_GOOD_CT"
+    },
+    {
+      "dtype": "int",
+      "id": "machine-03-scrap-count",
+      "machine": "machine-03",
+      "semantic": "scrap_count",
+      "tag": "MACHINE_03_SCRAP_CT"
+    },
+    {
+      "dtype": "enum",
+      "enum_states": {
+        "blocked": 2,
+        "down": 5,
+        "idle": 0,
+        "running": 1,
+        "setup": 4,
+        "starved": 3
+      },
+      "id": "machine-03-state",
+      "machine": "machine-03",
+      "semantic": "machine_state",
+      "tag": "MACHINE_03_STATE"
+    }
+  ]
+}
