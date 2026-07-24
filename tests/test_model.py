@@ -77,4 +77,4 @@ def test_factory_defaults_to_current_schema() -> None:
             provenance=Provenance(kind=ProvenanceKind.AUTHORED),
         )
     )
-    assert factory.schema_version == "0.1.0"
+    assert factory.schema_version == "0.2.0"

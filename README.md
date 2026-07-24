@@ -2,17 +2,17 @@
 
 The canonical semantic representation of a factory.
 
-Manufacturing IR sits between engineering intent and physical execution. Version 0.1 deliberately models only four primitives — **Machine**, **Operation**, **MaterialFlow**, and **Signal** — then proves that the model can be validated, analyzed, and simulated without connecting to a factory.
+Manufacturing IR sits between engineering intent and physical execution. Version 0.2 keeps exactly four primitives — **Machine**, **Operation**, **MaterialFlow**, and **Signal** — and adds physical batch quantities, deterministic dispatch policies, and repeating weekly machine calendars without connecting to a factory.
 
 This repository is a compiler core, not an AI agent. Every result is deterministic, inspectable, and traceable to the IR.
 
-## What v0.1 does
+## What v0.2 does
 
 - Defines the four-primitives IR with Pydantic and exports its JSON Schema.
-- Reads and writes byte-stable canonical JSON suitable for source control.
-- Produces compiler-style structural and semantic diagnostics (`MIR001`–`MIR026`).
-- Runs dependency-aware, non-mutating topology and capacity passes.
-- Simulates blocking, starvation, setup, yield loss, transport, stochastic downtime, assembly, and rework with a deterministic discrete-event kernel.
+- Reads v0.1 and v0.2, upgrades v0.1 defaults in memory, and writes byte-stable canonical v0.2 JSON.
+- Produces compiler-style structural and semantic diagnostics (`MIR001`–`MIR031`).
+- Runs dependency-aware, non-mutating topology and ratio-aware capacity passes.
+- Simulates blocking, starvation, setup, yield loss, transport, stochastic downtime, assembly, rework, shift calendars, and configurable dispatch with a deterministic discrete-event kernel.
 - Compares two alternatives with paired random seeds and reports throughput, bottleneck, utilization, WIP, and scrap changes.
 - Generates synthetic factories so every capability works without factory data.
 
@@ -48,8 +48,8 @@ Run tests:
 ```text
 mir validate FILE [--json]
 mir analyze FILE [--json]
-mir simulate FILE [--horizon-h H] [--warmup-h H] [--seed N] [--replications N] [--json]
-mir compare BASELINE VARIANT [--horizon-h H] [--warmup-h H] [--replications N] [--json]
+mir simulate FILE [--horizon-h H] [--warmup-h H] [--seed N] [--replications N] [--dispatch POLICY] [--json]
+mir compare BASELINE VARIANT [--horizon-h H] [--warmup-h H] [--replications N] [--dispatch POLICY] [--json]
 mir synth {serial-line,unbalanced-line,assembly-merge,rework-loop} -o FILE
 mir fmt FILE [--check]
 mir schema
@@ -101,12 +101,12 @@ mir/
   io.py          canonical JSON and schema export
   cli.py         mir command
 examples/        committed canonical synthetic IR documents
-docs/            normative v0.1 specification
+docs/            normative v0.1 and v0.2 specifications
 ```
 
 Passes are pure: they consume a `Factory`, emit diagnostics and named artifacts, and never mutate the IR. Dependencies are resolved by `PassManager`, so capacity consumes topology rather than rebuilding it.
 
-The simulator owns a small `heapq` event kernel instead of hiding semantics behind a simulation framework. A station can be `busy`, `idle`, `blocked`, `starved`, `setup`, or `down`. Every transition is integrated over the measurement window. The same factory, scenario, and seed produce identical output.
+The simulator owns a small `heapq` event kernel instead of hiding semantics behind a simulation framework. A station can be `busy`, `idle`, `blocked`, `starved`, `setup`, `down`, or `offshift`. Every transition is integrated over the measurement window. The same factory, scenario, and seed produce identical output.
 
 ## Canonical JSON
 
@@ -120,7 +120,7 @@ Cross-references are validated in passes rather than Pydantic. A reconstructed f
 
 ## Capacity semantics
 
-The analytic pass computes expected operation cycles per shipped unit, including batch size and downstream yield loss. It allocates alternative-machine load by effective station capacity and finds the resource with the highest effective seconds per unit.
+The analytic pass propagates physical `units_per_batch` ratios backward from the outlet and computes expected operation cycles per shipped unit, including batch size and downstream yield loss. It allocates alternative-machine load by effective station and calendar availability and finds the resource with the highest effective seconds per unit.
 
 The bound is exact for deterministic, single-outlet DAGs without alternative routing, setup interactions, finite-buffer effects, or stochastic downtime realization. Other graphs get `MIR100`; simulation is the decision surface for those cases.
 
@@ -128,16 +128,16 @@ The bound is exact for deterministic, single-outlet DAGs without alternative rou
 
 ## Deliberate limits
 
-Version 0.1 does not include:
+Version 0.2 does not include:
 
 - PLC, SCADA, historian, CAD, MES, or ERP connectors.
 - Brownfield semantic reconstruction.
 - PLC/SCADA generation or any other greenfield backend.
-- Scheduling, operators, optimization, business rules, or a BOM system.
+- Operator scheduling, optimization, business rules, or a detailed BOM entity system.
 - A database, web server, UI, LLM, or textual `.mir` DSL.
 
 Those are frontends, backends, or higher-level passes over the IR. They are intentionally excluded until the core representation proves stable.
 
 ## Specification
 
-The normative schema and execution semantics are in [`docs/ir-spec-0.1.md`](docs/ir-spec-0.1.md). The generated JSON Schema is available from `mir schema`.
+The current normative schema and execution semantics are in [`docs/ir-spec-0.2.md`](docs/ir-spec-0.2.md). [`docs/ir-spec-0.1.md`](docs/ir-spec-0.1.md) remains the compatibility reference. The generated JSON Schema is available from `mir schema`.

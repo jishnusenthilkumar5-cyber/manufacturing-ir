@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from mir.core.distributions import Distribution
 from mir.core.ids import EntityId, FlowId, MachineId, OperationId, SignalId
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({"0.1.0", SCHEMA_VERSION})
 
 
 class Model(BaseModel):
@@ -55,6 +56,12 @@ class Availability(Model):
     mttr_s: float = Field(allow_inf_nan=False)
 
 
+class ShiftWindow(Model):
+    day: int
+    start_s: float = Field(allow_inf_nan=False)
+    end_s: float = Field(allow_inf_nan=False)
+
+
 class Machine(Model):
     id: MachineId
     name: str = Field(min_length=1)
@@ -63,6 +70,7 @@ class Machine(Model):
     num_stations: int = Field(default=1, ge=1)
     setup_time_s: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     availability: Availability | None = None
+    calendar: list[ShiftWindow] = Field(default_factory=list)
     attrs: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -74,6 +82,7 @@ class Operation(Model):
     cycle_time: Distribution
     yield_fraction: float = Field(default=1.0, gt=0, le=1, allow_inf_nan=False)
     batch_size: int = Field(default=1, ge=1)
+    priority: int = 0
     attrs: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -84,6 +93,7 @@ class MaterialFlow(Model):
     to_op: OperationId | None = None
     input_port: str | None = Field(default=None, min_length=1)
     routing_weight: float = Field(default=1.0, gt=0, allow_inf_nan=False)
+    units_per_batch: int = Field(default=1, ge=1)
     buffer_capacity: int | None = Field(default=None, ge=0)
     transport_time_s: float = Field(default=0.0, ge=0, allow_inf_nan=False)
 
@@ -99,7 +109,7 @@ class Signal(Model):
 
 
 class Factory(Model):
-    schema_version: Literal["0.1.0"] = SCHEMA_VERSION
+    schema_version: Literal["0.2.0"] = SCHEMA_VERSION
     meta: FactoryMeta
     machines: list[Machine] = Field(default_factory=list)
     operations: list[Operation] = Field(default_factory=list)

@@ -6,10 +6,11 @@ from mir.sim.metrics import (
     SimulationResult,
     SimulationSummary,
 )
-from mir.sim.scenario import Scenario
+from mir.sim.scenario import DispatchPolicy, Scenario
 
 __all__ = [
     "BufferMetrics",
+    "DispatchPolicy",
     "MachineMetrics",
     "ReplicationMetrics",
     "Scenario",

@@ -2,6 +2,14 @@
 
 All notable changes to Manufacturing IR are documented here.
 
+## Unreleased
+
+- Add IR schema 0.2 with backward-compatible 0.1 loading and canonical 0.2 writing.
+- Add physical `units_per_batch` flow quantities, ratio-aware capacity propagation, and per-flow conservation ledgers.
+- Add deterministic `fifo-fair`, `priority`, and `shortest-cycle` dispatch policies through Python and CLI scenarios.
+- Add repeating weekly machine calendars with off-shift pause/resume semantics and capacity adjustment.
+- Add `MIR030` calendar and `MIR031` flow-quantity diagnostics.
+
 ## 0.1.0
 
 - Define the Machine, Operation, MaterialFlow, and Signal primitives.

@@ -7,7 +7,8 @@
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "operation-02",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "buffer_capacity": 20,
@@ -16,26 +17,30 @@
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "operation-03",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "id": "inlet",
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "operation-01",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "from_op": "operation-03",
       "id": "outlet",
       "material": "part",
       "routing_weight": 1.0,
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     }
   ],
   "machines": [
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "stage-01"
       ],
@@ -47,6 +52,7 @@
     },
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "stage-02"
       ],
@@ -58,6 +64,7 @@
     },
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "stage-03"
       ],
@@ -91,6 +98,7 @@
         "machine-01"
       ],
       "name": "Operation 01",
+      "priority": 0,
       "yield_fraction": 1.0
     },
     {
@@ -106,6 +114,7 @@
         "machine-02"
       ],
       "name": "Operation 02",
+      "priority": 0,
       "yield_fraction": 1.0
     },
     {
@@ -121,10 +130,11 @@
         "machine-03"
       ],
       "name": "Operation 03",
+      "priority": 0,
       "yield_fraction": 1.0
     }
   ],
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "signals": [
     {
       "dtype": "int",
@@ -153,6 +163,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3
@@ -189,6 +200,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3
@@ -225,6 +237,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3

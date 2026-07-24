@@ -12,6 +12,7 @@ from mir.core.model import (
     Operation,
     Provenance,
     ProvenanceKind,
+    ShiftWindow,
     Signal,
     SignalDataType,
     SignalSemantic,
@@ -46,6 +47,7 @@ class FactoryBuilder:
         num_stations: int = 1,
         setup_time_s: float = 0.0,
         availability: Availability | None = None,
+        calendar: Iterable[ShiftWindow] = (),
         attrs: dict | None = None,
     ) -> "FactoryBuilder":
         self._factory.machines.append(
@@ -57,6 +59,7 @@ class FactoryBuilder:
                 num_stations=num_stations,
                 setup_time_s=setup_time_s,
                 availability=availability,
+                calendar=list(calendar),
                 attrs=attrs or {},
             )
         )
@@ -72,6 +75,7 @@ class FactoryBuilder:
         *,
         yield_fraction: float = 1.0,
         batch_size: int = 1,
+        priority: int = 0,
         attrs: dict | None = None,
     ) -> "FactoryBuilder":
         machine_ids = [machines] if isinstance(machines, str) else list(machines)
@@ -89,6 +93,7 @@ class FactoryBuilder:
                 cycle_time=distribution,
                 yield_fraction=yield_fraction,
                 batch_size=batch_size,
+                priority=priority,
                 attrs=attrs or {},
             )
         )
@@ -103,6 +108,7 @@ class FactoryBuilder:
         to_op: str | None = None,
         input_port: str | None = None,
         routing_weight: float = 1.0,
+        units_per_batch: int = 1,
         buffer_capacity: int | None = None,
         transport_time_s: float = 0.0,
     ) -> "FactoryBuilder":
@@ -114,6 +120,7 @@ class FactoryBuilder:
                 to_op=to_op,
                 input_port=input_port,
                 routing_weight=routing_weight,
+                units_per_batch=units_per_batch,
                 buffer_capacity=buffer_capacity,
                 transport_time_s=transport_time_s,
             )
@@ -163,6 +170,7 @@ class FactoryBuilder:
                     "starved": 3,
                     "setup": 4,
                     "down": 5,
+                    "offshift": 6,
                 },
             )
             self.add_signal(

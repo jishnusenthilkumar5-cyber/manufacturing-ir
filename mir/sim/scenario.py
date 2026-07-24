@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class DispatchPolicy(StrEnum):
+    FIFO_FAIR = "fifo-fair"
+    PRIORITY = "priority"
+    SHORTEST_CYCLE = "shortest-cycle"
 
 
 class Scenario(BaseModel):
@@ -11,6 +19,7 @@ class Scenario(BaseModel):
     seed: int = 1
     replications: int = Field(default=1, ge=1, le=10_000)
     arrival_rates_per_hour: dict[str, float] = Field(default_factory=dict)
+    dispatch: DispatchPolicy = DispatchPolicy.FIFO_FAIR
 
     @model_validator(mode="after")
     def validate_scenario(self) -> "Scenario":

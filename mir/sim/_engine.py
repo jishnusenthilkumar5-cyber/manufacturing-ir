@@ -3,12 +3,13 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 
+from mir.core.calendar import is_on_shift, next_shift_transition
 from mir.core.model import Factory, MaterialFlow, Operation
 from mir.sim._runtime import BufferRuntime, Event, EventQueue, StationRuntime
 from mir.sim.metrics import BufferMetrics, MachineMetrics, ReplicationMetrics
-from mir.sim.scenario import Scenario
+from mir.sim.scenario import DispatchPolicy, Scenario
 
-STATES = ("busy", "idle", "blocked", "starved", "setup", "down")
+STATES = ("busy", "idle", "blocked", "starved", "setup", "down", "offshift")
 
 
 class ReplicationEngine:
@@ -67,6 +68,9 @@ class ReplicationEngine:
             for index in range(machine.num_stations):
                 key = f"{machine.id}:{index + 1}"
                 station = StationRuntime(key, machine.id, index)
+                station.on_shift = is_on_shift(machine, 0.0)
+                if not station.on_shift:
+                    station.state = "offshift"
                 self.stations[key] = station
                 stations.append(station)
             self.machine_stations[machine.id] = stations
@@ -74,6 +78,8 @@ class ReplicationEngine:
         self.output_counts = {flow.id: 0 for flow in factory.flows if flow.to_op is None}
         self.scrap_counts = {operation.id: 0 for operation in factory.operations}
         self.cycle_counts = {operation.id: 0 for operation in factory.operations}
+        self.flow_produced = {flow.id: 0 for flow in factory.flows}
+        self.flow_consumed = {flow.id: 0 for flow in factory.flows}
         self.input_count = 0
         self.dropped_arrivals = 0
         self.operation_last_started = {operation.id: 0 for operation in factory.operations}
@@ -81,6 +87,9 @@ class ReplicationEngine:
         self.baseline_outputs: dict[str, int] = {}
         self.baseline_scrap: dict[str, int] = {}
         self.baseline_cycles: dict[str, int] = {}
+        self.baseline_flow_produced: dict[str, int] = {}
+        self.baseline_flow_consumed: dict[str, int] = {}
+        self.starting_flow_inventory: dict[str, int] = {}
         self.baseline_input = 0
         self.starting_wip = 0
         self.measurement_started = False
@@ -96,6 +105,8 @@ class ReplicationEngine:
             )
         for flow_id in sorted(self.scenario.arrival_rates_per_hour):
             self.events.push(0.0, "arrival", (flow_id,), priority=30)
+        for machine_id in sorted(self.machines):
+            self._schedule_next_shift_change(machine_id)
         for station in self.stations.values():
             self._schedule_failure(station)
         self._stabilize()
@@ -119,6 +130,8 @@ class ReplicationEngine:
             self._handle_failure(self.stations[event.payload[0]])
         elif event.kind == "repair":
             self._handle_repair(self.stations[event.payload[0]])
+        elif event.kind == "shift_change":
+            self._handle_shift_change(event.payload[0], event.payload[1])
         elif event.kind in {"setup_complete", "process_complete"}:
             self._handle_station_event(event)
         elif event.kind == "transport_ready":
@@ -126,6 +139,57 @@ class ReplicationEngine:
             generation = event.payload[1]
             if station.work_generation == generation and station.current_operation:
                 self._flush_station(station)
+
+    def _schedule_next_shift_change(self, machine_id: str) -> None:
+        transition = next_shift_transition(self.machines[machine_id], self.now)
+        if transition is None or transition[0] > self.scenario.horizon_s:
+            return
+        when, on_shift = transition
+        self.events.push(
+            when,
+            "shift_change",
+            (machine_id, on_shift),
+            priority=5 if on_shift else 25,
+        )
+
+    def _pause_station(self, station: StationRuntime, state: str) -> None:
+        if station.scheduled_kind is not None and station.scheduled_due is not None:
+            station.paused_kind = station.scheduled_kind
+            station.paused_remaining_s = max(0.0, station.scheduled_due - self.now)
+            station.event_generation += 1
+            station.scheduled_kind = None
+            station.scheduled_due = None
+        station.set_state(state, self.now, self.scenario.warmup_s)
+
+    def _resume_station(self, station: StationRuntime) -> None:
+        if not station.on_shift:
+            station.set_state("offshift", self.now, self.scenario.warmup_s)
+        elif not station.up:
+            station.set_state("down", self.now, self.scenario.warmup_s)
+        elif station.paused_kind is not None:
+            kind = station.paused_kind
+            remaining = station.paused_remaining_s
+            station.paused_kind = None
+            station.paused_remaining_s = 0.0
+            station.set_state(
+                "setup" if kind == "setup_complete" else "busy",
+                self.now,
+                self.scenario.warmup_s,
+            )
+            self._schedule_station_event(station, kind, remaining)
+        elif station.pending_outputs:
+            station.set_state("blocked", self.now, self.scenario.warmup_s)
+        else:
+            station.set_state("idle", self.now, self.scenario.warmup_s)
+
+    def _handle_shift_change(self, machine_id: str, on_shift: bool) -> None:
+        for station in self.machine_stations[machine_id]:
+            station.on_shift = on_shift
+            if on_shift:
+                self._resume_station(station)
+            else:
+                self._pause_station(station, "offshift")
+        self._schedule_next_shift_change(machine_id)
 
     def _schedule_station_event(
         self, station: StationRuntime, kind: str, delay_s: float
@@ -151,13 +215,7 @@ class ReplicationEngine:
         if not station.up:
             return
         station.up = False
-        if station.scheduled_kind is not None and station.scheduled_due is not None:
-            station.paused_kind = station.scheduled_kind
-            station.paused_remaining_s = max(0.0, station.scheduled_due - self.now)
-            station.event_generation += 1
-            station.scheduled_kind = None
-            station.scheduled_due = None
-        station.set_state("down", self.now, self.scenario.warmup_s)
+        self._pause_station(station, "down" if station.on_shift else "offshift")
         availability = self.machines[station.machine_id].availability
         if availability is not None and availability.mttr_s > 0:
             delay = self.rng.expovariate(1.0 / availability.mttr_s)
@@ -167,21 +225,7 @@ class ReplicationEngine:
         if station.up:
             return
         station.up = True
-        if station.paused_kind is not None:
-            kind = station.paused_kind
-            remaining = station.paused_remaining_s
-            station.paused_kind = None
-            station.paused_remaining_s = 0.0
-            station.set_state(
-                "setup" if kind == "setup_complete" else "busy",
-                self.now,
-                self.scenario.warmup_s,
-            )
-            self._schedule_station_event(station, kind, remaining)
-        elif station.pending_outputs:
-            station.set_state("blocked", self.now, self.scenario.warmup_s)
-        else:
-            station.set_state("idle", self.now, self.scenario.warmup_s)
+        self._resume_station(station)
         self._schedule_failure(station)
 
     def _handle_station_event(self, event: Event) -> None:
@@ -189,6 +233,7 @@ class ReplicationEngine:
         generation = event.payload[1]
         if (
             not station.up
+            or not station.on_shift
             or station.event_generation != generation
             or station.scheduled_kind != event.kind
         ):
@@ -207,6 +252,7 @@ class ReplicationEngine:
         buffer = self.buffers[flow_id]
         if buffer.can_accept(1):
             buffer.add(1, self.now, self.scenario.warmup_s)
+            self.flow_produced[flow_id] += 1
             self.input_count += 1
         else:
             self.dropped_arrivals += 1
@@ -217,6 +263,11 @@ class ReplicationEngine:
         self.baseline_outputs = dict(self.output_counts)
         self.baseline_scrap = dict(self.scrap_counts)
         self.baseline_cycles = dict(self.cycle_counts)
+        self.baseline_flow_produced = dict(self.flow_produced)
+        self.baseline_flow_consumed = dict(self.flow_consumed)
+        self.starting_flow_inventory = {
+            flow_id: self._flow_inventory(flow_id) for flow_id in sorted(self.flows)
+        }
         self.baseline_input = self.input_count
         self.starting_wip = self._current_wip()
         for buffer in self.buffers.values():
@@ -231,15 +282,19 @@ class ReplicationEngine:
                 station.pending_outputs.get(flow.id, 0)
                 for station in self.stations.values()
                 if station.up
+                and station.on_shift
                 and station.state == "blocked"
                 and station.output_ready_at.get(flow.id, float("inf")) <= self.now
             )
         return self.buffers[flow.id].count
 
+    def _flow_quantity(self, operation: Operation, flow: MaterialFlow) -> int:
+        return operation.batch_size * flow.units_per_batch
+
     def _operation_ready(self, operation: Operation) -> bool:
         return all(
             any(
-                self._flow_available(flow) >= operation.batch_size
+                self._flow_available(flow) >= self._flow_quantity(operation, flow)
                 for flow in group
             )
             for group in self.input_groups[operation.id]
@@ -250,15 +305,23 @@ class ReplicationEngine:
             station
             for machine_id in operation.machines
             for station in self.machine_stations.get(machine_id, [])
-            if station.up and station.current_operation is None
+            if station.up and station.on_shift and station.current_operation is None
         ]
         return min(candidates, key=lambda item: item.key) if candidates else None
+
+    def _dispatch_key(self, operation: Operation) -> tuple:
+        fairness = (self.operation_last_started[operation.id], operation.id)
+        if self.scenario.dispatch is DispatchPolicy.PRIORITY:
+            return (-operation.priority, *fairness)
+        if self.scenario.dispatch is DispatchPolicy.SHORTEST_CYCLE:
+            return (operation.cycle_time.mean_seconds(), *fairness)
+        return fairness
 
     def _stabilize(self) -> None:
         while True:
             changed = False
             for station in sorted(self.stations.values(), key=lambda item: item.key):
-                if station.up and station.pending_outputs:
+                if station.up and station.on_shift and station.pending_outputs:
                     changed = self._flush_station(station) or changed
             ready = [
                 operation
@@ -267,10 +330,7 @@ class ReplicationEngine:
                 and self._find_station(operation) is not None
             ]
             if ready:
-                operation = min(
-                    ready,
-                    key=lambda item: (self.operation_last_started[item.id], item.id),
-                )
+                operation = min(ready, key=self._dispatch_key)
                 station = self._find_station(operation)
                 if station is None:
                     raise RuntimeError("ready operation lost its eligible station")
@@ -284,10 +344,11 @@ class ReplicationEngine:
         self._classify_free_stations()
 
     def _consume_inputs(self, operation: Operation) -> None:
-        quantity = operation.batch_size
         for group in self.input_groups[operation.id]:
             available = [
-                flow for flow in group if self._flow_available(flow) >= quantity
+                flow
+                for flow in group
+                if self._flow_available(flow) >= self._flow_quantity(operation, flow)
             ]
             if not available:
                 raise RuntimeError(f"operation {operation.id!r} lost a required input")
@@ -295,7 +356,9 @@ class ReplicationEngine:
                 available,
                 key=lambda item: (item.from_op is None, item.id),
             )
+            quantity = self._flow_quantity(operation, flow)
             if flow.from_op is None and flow.id not in self.scenario.arrival_rates_per_hour:
+                self.flow_produced[flow.id] += quantity
                 self.input_count += quantity
             elif flow.buffer_capacity == 0:
                 self._consume_synchronous_flow(flow.id, quantity)
@@ -303,12 +366,14 @@ class ReplicationEngine:
                 self.buffers[flow.id].remove(
                     quantity, self.now, self.scenario.warmup_s
                 )
+            self.flow_consumed[flow.id] += quantity
 
     def _consume_synchronous_flow(self, flow_id: str, quantity: int) -> None:
         remaining = quantity
         for station in sorted(self.stations.values(), key=lambda item: item.key):
             if (
                 not station.up
+                or not station.on_shift
                 or station.state != "blocked"
                 or station.output_ready_at.get(flow_id, float("inf")) > self.now
             ):
@@ -386,8 +451,10 @@ class ReplicationEngine:
             self._release_station(station)
             return
         station.pending_outputs = {
-            flow.id: operation.batch_size for flow in selected
+            flow.id: self._flow_quantity(operation, flow) for flow in selected
         }
+        for flow_id, quantity in station.pending_outputs.items():
+            self.flow_produced[flow_id] += quantity
         station.output_ready_at = {
             flow.id: self.now + flow.transport_time_s for flow in selected
         }
@@ -407,7 +474,7 @@ class ReplicationEngine:
         self._flush_station(station)
 
     def _flush_station(self, station: StationRuntime) -> bool:
-        if not station.up or not station.pending_outputs:
+        if not station.up or not station.on_shift or not station.pending_outputs:
             return False
         changed = False
         for flow_id in sorted(tuple(station.pending_outputs)):
@@ -417,6 +484,7 @@ class ReplicationEngine:
             flow = self.flows[flow_id]
             if flow.to_op is None:
                 self.output_counts[flow_id] += quantity
+                self.flow_consumed[flow_id] += quantity
             elif flow.buffer_capacity == 0:
                 continue
             else:
@@ -438,7 +506,12 @@ class ReplicationEngine:
         station.output_ready_at.clear()
         station.scheduled_kind = None
         station.scheduled_due = None
-        station.set_state("idle", self.now, self.scenario.warmup_s)
+        if not station.on_shift:
+            station.set_state("offshift", self.now, self.scenario.warmup_s)
+        elif not station.up:
+            station.set_state("down", self.now, self.scenario.warmup_s)
+        else:
+            station.set_state("idle", self.now, self.scenario.warmup_s)
 
     def _classify_free_stations(self) -> None:
         assigned: defaultdict[str, list[Operation]] = defaultdict(list)
@@ -446,7 +519,7 @@ class ReplicationEngine:
             for machine_id in operation.machines:
                 assigned[machine_id].append(operation)
         for station in self.stations.values():
-            if not station.up or station.current_operation is not None:
+            if not station.up or not station.on_shift or station.current_operation is not None:
                 continue
             operations = assigned[station.machine_id]
             state = (
@@ -455,6 +528,14 @@ class ReplicationEngine:
                 else "starved"
             )
             station.set_state(state, self.now, self.scenario.warmup_s)
+
+    def _flow_inventory(self, flow_id: str) -> int:
+        buffered = self.buffers[flow_id].count if flow_id in self.buffers else 0
+        pending = sum(
+            station.pending_outputs.get(flow_id, 0)
+            for station in self.stations.values()
+        )
+        return buffered + pending
 
     def _current_wip(self) -> int:
         buffered = sum(buffer.count for buffer in self.buffers.values())
@@ -488,12 +569,19 @@ class ReplicationEngine:
         ending_wip = self._current_wip()
         output_units = sum(output_delta.values())
         scrap_units = sum(scrap_delta.values())
-        conservation_error = (
-            input_delta
-            - output_units
-            - scrap_units
-            - (ending_wip - self.starting_wip)
-        )
+        conservation_by_flow = {
+            flow_id: (
+                self.flow_produced[flow_id]
+                - self.baseline_flow_produced.get(flow_id, 0)
+                - (self.flow_consumed[flow_id] - self.baseline_flow_consumed.get(flow_id, 0))
+                - (
+                    self._flow_inventory(flow_id)
+                    - self.starting_flow_inventory.get(flow_id, 0)
+                )
+            )
+            for flow_id in sorted(self.flows)
+        }
+        conservation_error = sum(abs(value) for value in conservation_by_flow.values())
 
         machine_metrics: dict[str, MachineMetrics] = {}
         for machine_id, stations in sorted(self.machine_stations.items()):
@@ -533,4 +621,5 @@ class ReplicationEngine:
             starting_wip=self.starting_wip,
             ending_wip=ending_wip,
             conservation_error=conservation_error,
+            conservation_by_flow=conservation_by_flow,
         )

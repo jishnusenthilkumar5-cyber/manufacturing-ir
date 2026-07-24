@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from mir.cli import app
@@ -63,7 +64,7 @@ def test_schema_command_outputs_json_schema() -> None:
     result = runner.invoke(app, ["schema"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["properties"]["schema_version"]["const"] == "0.1.0"
+    assert payload["properties"]["schema_version"]["const"] == "0.2.0"
 
 
 def test_validate_returns_one_for_semantic_error(tmp_path: Path) -> None:
@@ -103,3 +104,67 @@ def test_compare_outputs_json_report(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["throughput"]["delta_percent"] > 0
+
+
+@pytest.mark.parametrize(
+    "generator",
+    ["assembly-merge", "rework-loop", "serial-line", "unbalanced-line"],
+)
+def test_every_synthetic_generator_completes_cli_smoke_chain(
+    generator: str, tmp_path: Path
+) -> None:
+    target = tmp_path / f"{generator}.json"
+    generated = runner.invoke(app, ["synth", generator, "-o", str(target)])
+    assert generated.exit_code == 0, generated.output
+    assert runner.invoke(app, ["validate", str(target)]).exit_code == 0
+    assert runner.invoke(app, ["analyze", str(target), "--json"]).exit_code == 0
+    simulated = runner.invoke(
+        app,
+        [
+            "simulate",
+            str(target),
+            "--horizon-h",
+            "0.1",
+            "--dispatch",
+            "priority",
+            "--json",
+        ],
+    )
+    assert simulated.exit_code == 0, simulated.output
+    assert json.loads(simulated.output)["scenario"]["dispatch"] == "priority"
+    assert runner.invoke(app, ["fmt", str(target), "--check"]).exit_code == 0
+
+
+def test_compare_accepts_dispatch_policy(tmp_path: Path) -> None:
+    baseline = write_factory(
+        serial_line(stations=1, cycle_times_s=[10]),
+        tmp_path / "baseline.json",
+    )
+    variant = write_factory(
+        serial_line(
+            stations=1,
+            cycle_times_s=[8],
+            factory_id="variant",
+            name="Variant",
+        ),
+        tmp_path / "variant.json",
+    )
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            str(baseline),
+            str(variant),
+            "--horizon-h",
+            "0.1",
+            "--warmup-h",
+            "0",
+            "--replications",
+            "1",
+            "--dispatch",
+            "shortest-cycle",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["scenario"]["dispatch"] == "shortest-cycle"

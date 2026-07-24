@@ -14,7 +14,7 @@ from mir.io import (
     write_factory,
 )
 from mir.passes import Severity, analyze_factory, validate_factory
-from mir.sim import Scenario, SimulationError, simulate
+from mir.sim import DispatchPolicy, Scenario, SimulationError, simulate
 from mir.synth import CATALOG, assembly_merge, rework_loop, serial_line, unbalanced_line
 
 app = typer.Typer(
@@ -171,6 +171,7 @@ def simulate_command(
     warmup_h: float = typer.Option(0.0, "--warmup-h", min=0.0),
     seed: int = typer.Option(1),
     replications: int = typer.Option(1, min=1),
+    dispatch: DispatchPolicy = typer.Option(DispatchPolicy.FIFO_FAIR),
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
@@ -179,6 +180,7 @@ def simulate_command(
             warmup_s=warmup_h * 3600.0,
             seed=seed,
             replications=replications,
+            dispatch=dispatch,
         )
         result = simulate(_load(path), scenario)
     except (SimulationError, ValueError) as exc:
@@ -199,7 +201,8 @@ def simulate_command(
             f"{machine_id}: busy {states.get('busy', 0.0):.1%}, "
             f"blocked {states.get('blocked', 0.0):.1%}, "
             f"starved {states.get('starved', 0.0):.1%}, "
-            f"down {states.get('down', 0.0):.1%}"
+            f"down {states.get('down', 0.0):.1%}, "
+            f"offshift {states.get('offshift', 0.0):.1%}"
         )
 
 
@@ -211,6 +214,7 @@ def compare_command(
     warmup_h: float = typer.Option(1.0, "--warmup-h", min=0.0),
     seed: int = typer.Option(1),
     replications: int = typer.Option(10, min=1),
+    dispatch: DispatchPolicy = typer.Option(DispatchPolicy.FIFO_FAIR),
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
@@ -219,6 +223,7 @@ def compare_command(
             warmup_s=warmup_h * 3600.0,
             seed=seed,
             replications=replications,
+            dispatch=dispatch,
         )
         report = compare_factories(_load(baseline), _load(variant), scenario)
     except (SimulationError, ValueError) as exc:

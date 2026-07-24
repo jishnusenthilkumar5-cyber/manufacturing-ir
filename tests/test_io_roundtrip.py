@@ -69,7 +69,7 @@ def test_canonical_round_trip_is_byte_stable() -> None:
 
 def test_current_schema_is_exported() -> None:
     schema = factory_json_schema()
-    assert schema["properties"]["schema_version"]["const"] == "0.1.0"
+    assert schema["properties"]["schema_version"]["const"] == "0.2.0"
 
 
 def test_schema_version_gate_is_readable() -> None:

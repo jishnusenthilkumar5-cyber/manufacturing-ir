@@ -7,14 +7,16 @@
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "assemble",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "from_op": "assemble",
       "id": "assembled-out",
       "material": "part",
       "routing_weight": 1.0,
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "buffer_capacity": 8,
@@ -23,26 +25,30 @@
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "assemble",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "id": "in-a",
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "feed-a",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     },
     {
       "id": "in-b",
       "material": "part",
       "routing_weight": 1.0,
       "to_op": "feed-b",
-      "transport_time_s": 0.0
+      "transport_time_s": 0.0,
+      "units_per_batch": 1
     }
   ],
   "machines": [
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "assemble"
       ],
@@ -54,6 +60,7 @@
     },
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "feed-a"
       ],
@@ -65,6 +72,7 @@
     },
     {
       "attrs": {},
+      "calendar": [],
       "capabilities": [
         "feed-b"
       ],
@@ -98,6 +106,7 @@
         "assembler"
       ],
       "name": "Assemble",
+      "priority": 0,
       "yield_fraction": 1.0
     },
     {
@@ -113,6 +122,7 @@
         "feeder-a"
       ],
       "name": "Feed A",
+      "priority": 0,
       "yield_fraction": 1.0
     },
     {
@@ -128,10 +138,11 @@
         "feeder-b"
       ],
       "name": "Feed B",
+      "priority": 0,
       "yield_fraction": 1.0
     }
   ],
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "signals": [
     {
       "dtype": "int",
@@ -160,6 +171,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3
@@ -196,6 +208,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3
@@ -232,6 +245,7 @@
         "blocked": 2,
         "down": 5,
         "idle": 0,
+        "offshift": 6,
         "running": 1,
         "setup": 4,
         "starved": 3

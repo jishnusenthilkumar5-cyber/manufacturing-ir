@@ -85,6 +85,7 @@ class StationRuntime:
     state_since: float = 0.0
     state_durations: dict[str, float] = field(default_factory=lambda: defaultdict(float))
     up: bool = True
+    on_shift: bool = True
     current_operation: str | None = None
     last_operation_kind: str | None = None
     sampled_cycle_s: float = 0.0

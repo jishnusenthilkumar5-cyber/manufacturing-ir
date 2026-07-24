@@ -44,6 +44,7 @@ class ReplicationMetrics:
     starting_wip: int
     ending_wip: int
     conservation_error: int
+    conservation_by_flow: dict[str, int]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -62,6 +63,7 @@ class ReplicationMetrics:
             "starting_wip": self.starting_wip,
             "ending_wip": self.ending_wip,
             "conservation_error": self.conservation_error,
+            "conservation_by_flow": dict(self.conservation_by_flow),
         }
 
 

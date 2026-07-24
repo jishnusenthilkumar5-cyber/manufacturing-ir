@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
+from mir.core.calendar import shift_fraction
 from mir.core.model import Factory, Machine
 from mir.passes.base import Diagnostic, PassContext, PassResult, Severity
 from mir.passes.topology import TopologyAnalysis
@@ -15,6 +16,7 @@ class MachineCapacity:
     busy_seconds_per_unit: float
     effective_seconds_per_unit: float
     availability_fraction: float
+    calendar_fraction: float
     capacity_units_per_hour: float | None
 
     def to_dict(self) -> dict[str, Any]:
@@ -23,6 +25,7 @@ class MachineCapacity:
             "busy_seconds_per_unit": self.busy_seconds_per_unit,
             "effective_seconds_per_unit": self.effective_seconds_per_unit,
             "availability_fraction": self.availability_fraction,
+            "calendar_fraction": self.calendar_fraction,
             "capacity_units_per_hour": self.capacity_units_per_hour,
         }
 
@@ -33,6 +36,7 @@ class CapacityAnalysis:
     throughput_upper_bound_units_per_hour: float | None
     bottleneck_machine: str | None
     operation_cycles_per_unit: dict[str, float]
+    flow_units_per_output: dict[str, float]
     machine_capacities: dict[str, MachineCapacity]
 
     def to_dict(self) -> dict[str, Any]:
@@ -41,6 +45,7 @@ class CapacityAnalysis:
             "throughput_upper_bound_units_per_hour": self.throughput_upper_bound_units_per_hour,
             "bottleneck_machine": self.bottleneck_machine,
             "operation_cycles_per_unit": dict(self.operation_cycles_per_unit),
+            "flow_units_per_output": dict(self.flow_units_per_output),
             "machine_capacities": {
                 key: value.to_dict() for key, value in self.machine_capacities.items()
             },
@@ -90,7 +95,6 @@ class CapacityPass:
             )
 
         operations = factory.operation_map()
-        flows = factory.flow_map()
         required_flow_units: defaultdict[str, float] = defaultdict(float)
         cycles: dict[str, float] = {}
 
@@ -98,24 +102,39 @@ class CapacityPass:
             required_flow_units[topology.outlet_flows[0]] = 1.0
             for operation_id in reversed(topology.topological_order):
                 operation = operations[operation_id]
-                demand_by_material: defaultdict[str, float] = defaultdict(float)
-                for flow in factory.flows:
-                    if flow.from_op == operation_id:
-                        demand_by_material[flow.material] += required_flow_units[flow.id]
-                output_units = max(demand_by_material.values(), default=0.0)
-                if output_units <= 0:
+                successful_cycles = [
+                    required_flow_units[flow.id]
+                    / (operation.batch_size * flow.units_per_batch)
+                    for flow in factory.flows
+                    if flow.from_op == operation_id
+                    and required_flow_units[flow.id] > 0
+                ]
+                if not successful_cycles:
                     continue
-                cycle_count = output_units / (
-                    operation.batch_size * operation.yield_fraction
-                )
+                cycle_count = max(successful_cycles) / operation.yield_fraction
                 cycles[operation_id] = cycle_count
-                input_units = cycle_count * operation.batch_size
                 for flow in factory.flows:
                     if flow.to_op == operation_id:
-                        required_flow_units[flow.id] = input_units
+                        required_flow_units[flow.id] = (
+                            cycle_count
+                            * operation.batch_size
+                            * flow.units_per_batch
+                        )
         else:
             cycles = {
-                operation.id: 1.0 / (operation.batch_size * operation.yield_fraction)
+                operation.id: 1.0
+                / (
+                    operation.batch_size
+                    * max(
+                        (
+                            flow.units_per_batch
+                            for flow in factory.flows
+                            if flow.from_op == operation.id
+                        ),
+                        default=1,
+                    )
+                    * operation.yield_fraction
+                )
                 for operation in factory.operations
             }
 
@@ -127,7 +146,11 @@ class CapacityPass:
             if not eligible:
                 continue
             weights = {
-                machine.id: machine.num_stations * availability_fraction(machine)
+                machine.id: (
+                    machine.num_stations
+                    * availability_fraction(machine)
+                    * shift_fraction(machine)
+                )
                 for machine in eligible
             }
             total_weight = sum(weights.values())
@@ -146,8 +169,9 @@ class CapacityPass:
         for machine_id in sorted(machines):
             machine = machines[machine_id]
             fraction = availability_fraction(machine)
+            calendar = shift_fraction(machine)
             busy = busy_seconds[machine_id]
-            denominator = machine.num_stations * fraction
+            denominator = machine.num_stations * fraction * calendar
             effective = busy / denominator if denominator > 0 else float("inf")
             capacity = 3600.0 / effective if 0 < effective < float("inf") else None
             machine_capacities[machine_id] = MachineCapacity(
@@ -155,6 +179,7 @@ class CapacityPass:
                 busy_seconds_per_unit=busy,
                 effective_seconds_per_unit=effective,
                 availability_fraction=fraction,
+                calendar_fraction=calendar,
                 capacity_units_per_hour=capacity,
             )
 
@@ -175,6 +200,9 @@ class CapacityPass:
             throughput_upper_bound_units_per_hour=throughput,
             bottleneck_machine=bottleneck.machine_id if bottleneck else None,
             operation_cycles_per_unit=dict(sorted(cycles.items())),
+            flow_units_per_output={
+                key: required_flow_units[key] for key in sorted(required_flow_units)
+            },
             machine_capacities=machine_capacities,
         )
         return PassResult(diagnostics=diagnostics, artifacts={"analysis": analysis})

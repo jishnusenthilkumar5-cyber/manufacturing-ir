@@ -1,0 +1,60 @@
+{
+  "schema_version": "0.1.0",
+  "meta": {
+    "id": "v01-regression",
+    "name": "V0.1 Regression",
+    "provenance": {
+      "kind": "synthetic",
+      "source": "test fixture"
+    }
+  },
+  "machines": [
+    {
+      "id": "machine-01",
+      "name": "Machine 01",
+      "machine_class": "generic-processor",
+      "capabilities": ["stage-01"]
+    },
+    {
+      "id": "machine-02",
+      "name": "Machine 02",
+      "machine_class": "generic-processor",
+      "capabilities": ["stage-02"]
+    }
+  ],
+  "operations": [
+    {
+      "id": "operation-01",
+      "name": "Operation 01",
+      "kind": "stage-01",
+      "machines": ["machine-01"],
+      "cycle_time": {"kind": "constant", "value_s": 10.0}
+    },
+    {
+      "id": "operation-02",
+      "name": "Operation 02",
+      "kind": "stage-02",
+      "machines": ["machine-02"],
+      "cycle_time": {"kind": "constant", "value_s": 20.0}
+    }
+  ],
+  "flows": [
+    {
+      "id": "inlet",
+      "material": "part",
+      "to_op": "operation-01"
+    },
+    {
+      "id": "buffer-01",
+      "material": "part",
+      "from_op": "operation-01",
+      "to_op": "operation-02",
+      "buffer_capacity": 2
+    },
+    {
+      "id": "outlet",
+      "material": "part",
+      "from_op": "operation-02"
+    }
+  ]
+}
