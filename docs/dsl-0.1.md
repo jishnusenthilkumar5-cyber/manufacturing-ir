@@ -104,3 +104,11 @@ The round-trip invariant is:
 ```text
 compile(decompile(factory)) == factory
 ```
+
+## Scope
+
+The DSL describes `Factory` data only. Scenario-level settings such as the dispatch policy
+(`fifo-fair`, `priority`, `shortest-cycle`), horizon, warmup, seed, and replication count are
+not part of the factory document and are therefore not representable in `.mir` source; supply
+them through the CLI options or the `Scenario` Python API. Operation `priority` is factory
+data and does round-trip.
