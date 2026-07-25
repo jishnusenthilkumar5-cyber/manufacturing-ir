@@ -1,10 +1,279 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>MIR Workbench</title>
-  </head>
-  <body>
-    <p>MIR Workbench UI goes here</p>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIR Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="viewport">
+<div class="app">
+
+  <!-- ============ HEADER ============ -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark">IR</div>
+      <div>
+        <div class="brand-title">MIR Workbench</div>
+        <div class="brand-sub">Manufacturing IR · v<span id="meta-version">…</span></div>
+      </div>
+    </div>
+    <div class="pipeline" id="pipeline">
+      <div class="chip" data-stage="compile"><span class="chip-ico">·</span><span class="chip-label">compile</span></div>
+      <span class="chip-arrow">→</span>
+      <div class="chip" data-stage="validate"><span class="chip-ico">·</span><span class="chip-label">validate</span></div>
+      <span class="chip-arrow">→</span>
+      <div class="chip" data-stage="analyze"><span class="chip-ico">·</span><span class="chip-label">analyze</span></div>
+      <span class="chip-arrow">→</span>
+      <div class="chip" data-stage="simulate"><span class="chip-ico">·</span><span class="chip-label">simulate</span></div>
+    </div>
+    <div class="header-right">
+      <div class="header-factoid">factory <span id="hdr-factory">—</span> · provenance <span id="hdr-provenance">—</span></div>
+      <div class="exit-pill" id="hdr-exit">exit 0</div>
+    </div>
+  </header>
+
+  <!-- ============ ACTION TOOLBAR ============ -->
+  <div class="toolbar">
+    <span class="toolbar-label">Pipeline</span>
+    <button class="tbtn" data-action="validate">validate</button>
+    <button class="tbtn" data-action="fmt">fmt</button>
+    <button class="tbtn" data-action="compile">compile</button>
+    <button class="tbtn" data-action="decompile">decompile</button>
+    <button class="tbtn" data-action="analyze">analyze</button>
+    <button class="tbtn tbtn-accent" data-action="simulate">simulate</button>
+    <button class="tbtn" data-action="report">report</button>
+    <span class="toolbar-sep"></span>
+    <span class="toolbar-label">Decide</span>
+    <button class="tbtn" data-action="sweep">sweep</button>
+    <button class="tbtn" data-action="recommend">recommend</button>
+    <button class="tbtn" data-action="sensitivity">sensitivity</button>
+    <span class="toolbar-sep"></span>
+    <span class="toolbar-label">Ship</span>
+    <button class="tbtn" data-action="compare">compare</button>
+    <button class="tbtn" data-action="emit">emit st</button>
+    <button class="tbtn" data-action="schema">schema</button>
+  </div>
+
+  <!-- ============ MAIN 3-COLUMN WORKBENCH ============ -->
+  <div class="columns">
+
+    <!-- ---- LEFT: EDITOR ---- -->
+    <aside class="editor-pane">
+      <div class="editor-head">
+        <span class="editor-dot" id="editor-dot"></span>
+        <span class="editor-filename" id="editor-filename">untitled.mir</span>
+        <span class="editor-canonical" id="editor-canonical"></span>
+      </div>
+      <div class="editor-controls">
+        <select id="example-picker" title="Load example">
+          <option value="">examples…</option>
+        </select>
+        <select id="synth-picker" title="Generate synthetic factory">
+          <option value="">synth…</option>
+        </select>
+        <div class="fmt-toggle" id="fmt-toggle">
+          <button data-fmt="mir" class="active">.mir</button>
+          <button data-fmt="json">.json</button>
+        </div>
+      </div>
+      <div class="editor-body">
+        <div class="editor-gutter" id="editor-gutter"></div>
+        <textarea id="editor" spellcheck="false" wrap="off"></textarea>
+      </div>
+      <div class="editor-foot">
+        <span id="editor-mode">MIR DSL</span>
+        <span id="editor-pos">Ln 1, Col 1</span>
+        <span class="editor-foot-right">compile(decompile(f)) == f</span>
+      </div>
+    </aside>
+
+    <!-- ---- CENTER: TOPOLOGY ---- -->
+    <main class="topo-pane">
+      <div class="topo-head">
+        <span class="topo-title">Topology · discrete-event kernel</span>
+        <span class="topo-clock" id="topo-clock"></span>
+        <div class="topo-head-right">
+          <span class="topo-status" id="topo-status">no factory compiled</span>
+        </div>
+      </div>
+      <div class="topo-canvas" id="topo-canvas">
+        <div class="topo-empty" id="topo-empty">compile or load a document, then <span class="amber">analyze</span> / <span class="amber">simulate</span></div>
+      </div>
+      <div class="topo-legend" id="topo-legend">
+        <span><i style="background:#3ddc84"></i>running</span>
+        <span><i style="background:#6b7684"></i>idle</span>
+        <span><i style="background:#f0a83a"></i>blocked</span>
+        <span><i style="background:#4aa3ff"></i>starved</span>
+        <span><i style="background:#b98aff"></i>setup</span>
+        <span><i style="background:#ff4d4d"></i>down</span>
+        <span><i style="background:#3a424d"></i>offshift</span>
+      </div>
+    </main>
+
+    <!-- ---- RIGHT: METRICS + SCENARIO ---- -->
+    <aside class="metrics-pane">
+      <section>
+        <div class="section-title">Simulation</div>
+        <div class="card" id="sim-card">
+          <div class="thru-row">
+            <span class="thru-big" id="m-throughput">—</span>
+            <span class="thru-unit">units/hour</span>
+          </div>
+          <div class="thru-bar"><div id="m-thru-fill"></div></div>
+          <div class="thru-scale"><span>0</span><span id="m-bound-label">analytic bound —</span></div>
+          <div class="stat-row">
+            <div><div class="stat-label">WIP</div><div class="stat-val" id="m-wip">—</div></div>
+            <div><div class="stat-label">Scrap</div><div class="stat-val" id="m-scrap">—</div></div>
+            <div><div class="stat-label">Reps</div><div class="stat-val" id="m-reps">—</div></div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="section-title">Machine state fractions</div>
+        <div id="state-fractions" class="fractions"><div class="muted-note">run simulate</div></div>
+        <div class="fraction-legend">
+          <span><i style="color:#3ddc84">■</i> busy</span>
+          <span><i style="color:#f0a83a">■</i> blocked</span>
+          <span><i style="color:#4aa3ff">■</i> starved</span>
+          <span><i style="color:#6b7684">■</i> other</span>
+        </div>
+      </section>
+      <section>
+        <div class="section-title">Capacity pass</div>
+        <div class="card kv" id="capacity-card">
+          <div><span>Throughput bound</span><span id="c-bound">—</span></div>
+          <div><span>Bottleneck</span><span id="c-bottleneck" class="amber">—</span></div>
+          <div><span>Serial line</span><span id="c-serial">—</span></div>
+          <div><span>Bound exactness</span><span id="c-exact">—</span></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-title">Scenario</div>
+        <div class="card kv scenario-card">
+          <div><span>Horizon (h)</span><input id="sc-horizon" type="number" value="24" step="1" min="0.1"></div>
+          <div><span>Warmup (h)</span><input id="sc-warmup" type="number" value="1" step="0.5" min="0"></div>
+          <div><span>Seed</span><input id="sc-seed" type="number" value="1" step="1"></div>
+          <div><span>Replications</span><input id="sc-reps" type="number" value="10" step="1" min="1"></div>
+          <div><span>Dispatch</span><select id="sc-dispatch"></select></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ============ BOTTOM CONSOLE ============ -->
+  <div class="console-pane">
+    <div class="console-tabs">
+      <button class="ctab active" data-tab="console">console</button>
+      <button class="ctab" data-tab="diagnostics">diagnostics (<span id="diag-count">0</span>)</button>
+      <button class="ctab" data-tab="report">report</button>
+      <span class="console-tabs-right">deterministic · same seed → same output</span>
+    </div>
+    <div class="console-body">
+      <div class="cpanel active" id="panel-console"></div>
+      <div class="cpanel" id="panel-diagnostics"><div class="muted-note">no diagnostics yet</div></div>
+      <div class="cpanel cpanel-report" id="panel-report">
+        <div class="report-actions">
+          <button class="tbtn" id="report-open-tab" disabled>open in new tab</button>
+          <span class="muted-note" id="report-note">run report or compare-report first</span>
+        </div>
+        <iframe id="report-frame" title="report"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ MODAL: DECIDE (sweep / recommend / sensitivity) ============ -->
+<div class="modal-backdrop" id="modal-decide" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <span class="modal-title" id="decide-title">Decision tools</span>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="decide-grid">
+      <div class="decide-left">
+        <div class="section-title">Design space (JSON)</div>
+        <textarea id="space-editor" spellcheck="false"></textarea>
+        <div class="decide-opts">
+          <label>objective <select id="decide-objective"></select></label>
+          <label>top_k <input id="decide-topk" type="number" value="3" min="1" step="1"></label>
+          <label>percent <input id="decide-percent" type="number" value="10" step="1"></label>
+        </div>
+        <div class="decide-actions">
+          <button class="tbtn tbtn-accent" id="run-sweep">run sweep</button>
+          <button class="tbtn tbtn-accent" id="run-recommend">run recommend</button>
+          <button class="tbtn tbtn-accent" id="run-sensitivity">run sensitivity</button>
+        </div>
+      </div>
+      <div class="decide-right" id="decide-results">
+        <div class="muted-note">results appear here</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: COMPARE ============ -->
+<div class="modal-backdrop" id="modal-compare" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <span class="modal-title">Compare · baseline vs variant</span>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-left">
+        <div class="section-title">Variant document <span class="muted-note">(baseline = editor)</span></div>
+        <div class="editor-controls">
+          <select id="variant-example-picker"><option value="">examples…</option></select>
+          <div class="fmt-toggle" id="variant-fmt-toggle">
+            <button data-fmt="mir" class="active">.mir</button>
+            <button data-fmt="json">.json</button>
+          </div>
+        </div>
+        <textarea id="variant-editor" spellcheck="false"></textarea>
+        <div class="decide-actions">
+          <button class="tbtn tbtn-accent" id="run-compare">compare</button>
+          <button class="tbtn" id="run-compare-report">comparison report</button>
+        </div>
+      </div>
+      <div class="compare-right" id="compare-results">
+        <div class="muted-note">results appear here</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: EMIT ============ -->
+<div class="modal-backdrop" id="modal-emit" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <span class="modal-title">Emit · IEC 61131-3 Structured Text</span>
+      <select id="emit-backend"></select>
+      <button class="tbtn" id="emit-download">download .zip</button>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="emit-grid">
+      <div class="emit-tree" id="emit-tree"><div class="muted-note">emitting…</div></div>
+      <pre class="emit-content" id="emit-content"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: SCHEMA ============ -->
+<div class="modal-backdrop" id="modal-schema" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <span class="modal-title">Factory JSON Schema</span>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <pre class="schema-content" id="schema-content"></pre>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
 </html>

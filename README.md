@@ -50,6 +50,31 @@ Run tests:
 .venv/bin/python -m pytest
 ```
 
+## Web workbench
+
+Every CLI capability is also available through a browser UI (the MIR Workbench) backed by a
+FastAPI server:
+
+```bash
+.venv/bin/pip install -e ".[dev,web]"
+.venv/bin/uvicorn webapp.server:app --port 8000
+# open http://localhost:8000/
+```
+
+The frontend is plain HTML/CSS/JS in `webapp/static/` (no build step) — edit those files and
+refresh the browser. The JSON API lives under `/api` (see `webapp/server.py`); interactive API
+docs are served at `/docs`.
+
+Deploy anywhere that runs a container:
+
+```bash
+docker build -t mir-workbench .
+docker run -p 8000:8000 mir-workbench
+```
+
+The same image works on Fly.io, Railway, Render, Cloud Run, or any VM. The server is stateless,
+so a single instance suffices.
+
 ## CLI
 
 ```text
