@@ -764,12 +764,13 @@ $('#run-compare').addEventListener('click', async () => {
   logCmd(`mir compare ${state.filename} <variant>`);
   try {
     const r = await postJSON('/compare', { baseline: currentSource(), variant: variantSource(), scenario: currentScenario() });
+    const t = r.throughput || {};
     const rows = [
-      ['Throughput (u/h)', `${fmt2(r.baseline_throughput_mean)} ± ${fmt2(r.baseline_throughput_stdev)}`, `${fmt2(r.variant_throughput_mean)} ± ${fmt2(r.variant_throughput_stdev)}`],
-      ['Paired Δ', '—', `${fmt2(r.paired_delta_mean)} ± ${fmt2(r.paired_delta_stdev)} (${fmt2(r.delta_percent)}%)`],
-      ['Bottleneck', r.bottleneck_before || '—', r.bottleneck_after || '—'],
-      ['Ending WIP', fmt2(r.ending_wip_before), fmt2(r.ending_wip_after)],
-      ['Scrap', fmt2(r.scrap_before), fmt2(r.scrap_after)],
+      ['Throughput (u/h)', `${fmt2(t.baseline_mean)} ± ${fmt2(t.baseline_stdev)}`, `${fmt2(t.variant_mean)} ± ${fmt2(t.variant_stdev)}`],
+      ['Paired Δ', '—', `${fmt2(t.paired_delta_mean)} ± ${fmt2(t.paired_delta_stdev)} (${fmt2(t.delta_percent)}%)`],
+      ['Bottleneck', r.bottleneck?.before || '—', r.bottleneck?.after || '—'],
+      ['Ending WIP', fmt2(r.ending_wip?.before), fmt2(r.ending_wip?.after)],
+      ['Scrap', fmt2(r.scrap?.before), fmt2(r.scrap?.after)],
     ];
     results.innerHTML = `
       <div class="section-title">${esc(r.baseline_id)} vs ${esc(r.variant_id)}</div>
