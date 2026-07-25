@@ -366,6 +366,9 @@ tbody tr.is-bottleneck td {
   fill: #475467;
   font-size: 11px;
   font-weight: 650;
+  paint-order: stroke;
+  stroke: #f8fafc;
+  stroke-width: 3px;
 }
 .node-card {
   stroke: #aeb9c9;

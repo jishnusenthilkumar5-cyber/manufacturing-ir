@@ -165,10 +165,10 @@ def _topology_positions(
         group = groups[rank]
         offset = (row_count - len(group)) * 72
         for index, operation_id in enumerate(group):
-            positions[operation_id] = (120 + rank * 310, 50 + offset + index * 144)
+            positions[operation_id] = (190 + rank * 340, 70 + offset + index * 152)
     rank_count = max(ranks.values(), default=0) + 1
-    width = max(720, 240 + rank_count * 310)
-    height = max(250, 110 + row_count * 144 + len(factory.flows) * 5)
+    width = max(760, 380 + rank_count * 340)
+    height = max(280, 150 + row_count * 152 + len(factory.flows) * 5)
     return ordered, positions, width, height
 
 
@@ -181,7 +181,7 @@ def _arrow(x: float, y: float, direction: str) -> str:
     return f'<polygon class="flow-arrow" points="{points}"></polygon>'
 
 
-def _flow_label(flow: MaterialFlow) -> str:
+def _flow_label(flow: MaterialFlow) -> tuple[str, str]:
     capacity = (
         "handoff"
         if flow.buffer_capacity == 0
@@ -189,13 +189,41 @@ def _flow_label(flow: MaterialFlow) -> str:
         if flow.buffer_capacity is None
         else f"cap {flow.buffer_capacity}"
     )
-    return _short(
-        f"{flow.id} | {flow.material} | {flow.units_per_batch}/batch | {capacity}",
-        42,
+    return (
+        _short(f"{flow.id} | {flow.material}", 30),
+        _short(f"{flow.units_per_batch}/batch | {capacity}", 30),
     )
 
 
-def _flow_art(flow: MaterialFlow, index: int, positions: dict[str, tuple[float, float]]) -> str:
+def _place_label(x: float, y: float, placed: list[tuple[float, float]]) -> float:
+    y = max(y, 26.0)
+    def collides(candidate: float) -> bool:
+        return any(abs(x - px) < 200 and abs(candidate - py) < 32 for px, py in placed)
+    if collides(y):
+        for step in (-32, 32, -64, 64, -96, 96, -128, 128):
+            candidate = y + step
+            if candidate >= 26.0 and not collides(candidate):
+                y = candidate
+                break
+        else:
+            while collides(y):
+                y += 32
+    placed.append((x, y))
+    return y
+
+
+def _flow_label_svg(flow: MaterialFlow, x: float, y: float) -> str:
+    first, second = _flow_label(flow)
+    return (
+        f'<text class="flow-label" x="{x:.1f}" y="{y:.1f}" text-anchor="middle">'
+        f'<tspan x="{x:.1f}" dy="0">{escaped(first)}</tspan>'
+        f'<tspan x="{x:.1f}" dy="13">{escaped(second)}</tspan></text>'
+    )
+
+
+def _flow_art(
+    flow: MaterialFlow, index: int, positions: dict[str, tuple[float, float]]
+) -> tuple[str, float, float | None]:
     source = positions.get(flow.from_op or "")
     target = positions.get(flow.to_op or "")
     if source and target and flow.from_op == flow.to_op:
@@ -204,7 +232,7 @@ def _flow_art(flow: MaterialFlow, index: int, positions: dict[str, tuple[float, 
         top = max(15.0, y - 48 - index * 3)
         path = f"M {start_x:.1f} {y:.1f} C {start_x:.1f} {top:.1f}, {end_x:.1f} {top:.1f}, {end_x:.1f} {y:.1f}"
         arrow = _arrow(end_x, y, "left")
-        label_x, label_y = x + 110, top - 4
+        label_x, label_y = x + 110, top - 22
     elif source and target:
         source_x, source_y = source
         target_x, target_y = target
@@ -220,23 +248,26 @@ def _flow_art(flow: MaterialFlow, index: int, positions: dict[str, tuple[float, 
             bend = max(start_y, end_y) + 72 + index * 5
             path = f"M {start_x:.1f} {start_y:.1f} C {start_x - 70:.1f} {bend:.1f}, {end_x + 70:.1f} {bend:.1f}, {end_x:.1f} {end_y:.1f}"
             arrow = _arrow(end_x, end_y, "left")
-        label_x, label_y = (start_x + end_x) / 2, (start_y + end_y) / 2 - 9
+            curve_bottom = 0.25 * (start_y + end_y) / 2 + 0.75 * bend
+            art = f'<path class="flow-line" d="{path}"></path>{arrow}'
+            return art, (start_x + end_x) / 2, curve_bottom + 16
+        label_x, label_y = (start_x + end_x) / 2, min(start_y, end_y) - 26
     elif target:
         target_x, target_y = target
-        start_x, end_x, end_y = target_x - 82, target_x, target_y + NODE_HEIGHT / 2
+        start_x, end_x, end_y = target_x - 150, target_x, target_y + NODE_HEIGHT / 2
         path = f"M {start_x:.1f} {end_y:.1f} L {end_x:.1f} {end_y:.1f}"
         arrow = _arrow(end_x, end_y, "right")
-        label_x, label_y = (start_x + end_x) / 2, end_y - 9
+        label_x, label_y = (start_x + end_x) / 2, end_y - 26
     elif source:
         source_x, source_y = source
-        start_x, end_x, end_y = source_x + NODE_WIDTH, source_x + NODE_WIDTH + 82, source_y + NODE_HEIGHT / 2
+        start_x, end_x, end_y = source_x + NODE_WIDTH, source_x + NODE_WIDTH + 150, source_y + NODE_HEIGHT / 2
         path = f"M {start_x:.1f} {end_y:.1f} L {end_x:.1f} {end_y:.1f}"
         arrow = _arrow(end_x, end_y, "right")
-        label_x, label_y = (start_x + end_x) / 2, end_y - 9
+        label_x, label_y = (start_x + end_x) / 2, end_y - 26
     else:
-        return ""
-    label = escaped(_flow_label(flow))
-    return f'<path class="flow-line" d="{path}"></path>{arrow}<text class="flow-label" x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle">{label}</text>'
+        return "", 0.0, None
+    art = f'<path class="flow-line" d="{path}"></path>{arrow}'
+    return art, label_x, label_y
 
 
 def _render_topology(
@@ -248,9 +279,14 @@ def _render_topology(
     ordered, positions, width, height = _topology_positions(factory, topology)
     operations = factory.operation_map()
     states_by_machine = simulation.summary.machine_state_fractions_mean
-    flows = "".join(
-        _flow_art(flow, index, positions)
-        for index, flow in enumerate(sorted(factory.flows, key=lambda item: item.id))
+    sorted_flows = sorted(factory.flows, key=lambda item: item.id)
+    flow_parts = [_flow_art(flow, index, positions) for index, flow in enumerate(sorted_flows)]
+    flows = "".join(art for art, _, _ in flow_parts)
+    placed: list[tuple[float, float]] = []
+    flow_labels = "".join(
+        _flow_label_svg(flow, label_x, _place_label(label_x, label_y, placed))
+        for flow, (_, label_x, label_y) in zip(sorted_flows, flow_parts)
+        if label_y is not None
     )
     nodes: list[str] = []
     for operation_id in ordered:
@@ -286,7 +322,7 @@ def _render_topology(
         )
     svg = (
         f'<div class="topology-wrap"><svg class="topology-svg" viewBox="0 0 {width} {height}" role="img" aria-label="Factory operation and material-flow topology">'
-        f'<title>Topology for {escaped(factory.meta.name)}</title>{flows}{"".join(nodes)}</svg></div>'
+        f'<title>Topology for {escaped(factory.meta.name)}</title>{flows}{"".join(nodes)}{flow_labels}</svg></div>'
     )
     return _panel("Operation and material-flow topology", svg)
 

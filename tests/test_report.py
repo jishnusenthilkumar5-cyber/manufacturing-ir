@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,23 @@ def test_all_catalog_models_render(catalog_name: str) -> None:
     assert '<svg class="topology-svg"' in report
     for operation in factory.operations:
         assert operation.id in report
+
+
+@pytest.mark.parametrize("catalog_name", sorted(CATALOG))
+def test_topology_flow_labels_do_not_overlap(catalog_name: str) -> None:
+    factory = CATALOG[catalog_name]()
+    report = render_factory_report(factory, SHORT_SCENARIO)
+
+    labels = [
+        (float(x), float(y))
+        for x, y in re.findall(r'flow-label" x="([\d.]+)" y="([\d.]+)"', report)
+    ]
+    assert len(labels) == len(factory.flows)
+    for i, (x1, y1) in enumerate(labels):
+        for x2, y2 in labels[i + 1 :]:
+            assert abs(x1 - x2) >= 200 or abs(y1 - y2) >= 30, (
+                f"labels overlap at ({x1}, {y1}) and ({x2}, {y2})"
+            )
 
 
 def test_factory_report_contains_engineering_content() -> None:
