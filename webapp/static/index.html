@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIR Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header id="header">
+  <div class="brand">
+    <div class="brand-mark">IR</div>
+    <div>
+      <div class="brand-name">MIR Workbench</div>
+      <div class="brand-sub">Manufacturing IR · v<span id="meta-version">…</span></div>
+    </div>
+  </div>
+  <nav id="view-tabs">
+    <button class="view-tab active" data-view="workbench">Workbench</button>
+    <button class="view-tab" data-view="decide">Decide</button>
+    <button class="view-tab" data-view="reports">Reports</button>
+    <button class="view-tab" data-view="codegen">Codegen</button>
+  </nav>
+  <div class="pipeline" id="pipeline">
+    <span class="chip" data-stage="compile">compile</span><span class="arrow">→</span>
+    <span class="chip" data-stage="validate">validate</span><span class="arrow">→</span>
+    <span class="chip" data-stage="analyze">analyze</span><span class="arrow">→</span>
+    <span class="chip" data-stage="simulate">simulate</span>
+  </div>
+  <div class="header-right">
+    <span id="doc-label">factory <b id="factory-name">—</b></span>
+    <span class="exit-chip" id="status-chip">ready</span>
+  </div>
+</header>
+
+<div id="body-row">
+
+  <!-- ============ LEFT: EDITOR RAIL ============ -->
+  <aside id="editor-pane">
+    <div class="pane-head">
+      <span class="dot green"></span>
+      <span id="editor-filename">untitled.mir</span>
+      <span class="head-note" id="editor-canon"></span>
+    </div>
+    <div class="editor-toolbar">
+      <div class="seg" id="fmt-toggle">
+        <button data-fmt="mir" class="active">.mir</button>
+        <button data-fmt="json">.json</button>
+      </div>
+      <select id="example-picker" title="Load an example"><option value="">example…</option></select>
+      <select id="synth-picker" title="Generate a synthetic factory"><option value="">synth…</option></select>
+    </div>
+    <div class="editor-wrap">
+      <div id="line-numbers"></div>
+      <textarea id="editor" spellcheck="false" wrap="off"></textarea>
+    </div>
+    <div class="editor-actions">
+      <button class="btn" id="btn-validate">Validate</button>
+      <button class="btn" id="btn-format">Format</button>
+      <button class="btn" id="btn-compile">Compile</button>
+      <button class="btn" id="btn-decompile">Decompile</button>
+      <button class="btn" id="btn-schema">Schema</button>
+    </div>
+    <div class="scenario-box">
+      <div class="section-label">Scenario</div>
+      <div class="scenario-grid">
+        <label>horizon h<input id="sc-horizon" type="number" value="24" min="0.1" step="1"></label>
+        <label>warmup h<input id="sc-warmup" type="number" value="1" min="0" step="0.5"></label>
+        <label>seed<input id="sc-seed" type="number" value="1" step="1"></label>
+        <label>reps<input id="sc-reps" type="number" value="10" min="1" step="1"></label>
+        <label class="wide">dispatch<select id="sc-dispatch"></select></label>
+      </div>
+    </div>
+    <div class="editor-status">
+      <span id="editor-format-label">MIR DSL</span>
+      <span class="right">compile(decompile(f)) == f</span>
+    </div>
+  </aside>
+
+  <!-- ============ CENTER: VIEWS ============ -->
+  <main id="main-pane">
+
+    <!-- ---- WORKBENCH VIEW ---- -->
+    <section class="view active" id="view-workbench">
+      <div class="view-toolbar">
+        <span class="section-label">Topology · discrete-event kernel</span>
+        <span class="right">
+          <button class="btn" id="btn-analyze">Analyze</button>
+          <button class="btn amber" id="btn-simulate">▶ Simulate</button>
+        </span>
+      </div>
+      <div class="wb-row">
+        <div id="topology" class="topology"><div class="placeholder">Load a document, then Analyze or Simulate to render the factory topology.</div></div>
+        <aside id="metrics-pane">
+          <div class="section-label">Simulation</div>
+          <div class="card" id="thru-card">
+            <div class="big-row"><span class="big" id="m-thru">—</span><span class="unit">units/hour</span></div>
+            <div class="bar-track"><div class="bar-fill amber-bg" id="m-thru-bar" style="width:0%"></div></div>
+            <div class="bar-scale"><span>0</span><span>analytic bound <b id="m-bound">—</b></span></div>
+            <div class="stat-row">
+              <div><div class="stat-label">WIP</div><div class="stat-val" id="m-wip">—</div></div>
+              <div><div class="stat-label">Scrap</div><div class="stat-val" id="m-scrap">—</div></div>
+              <div><div class="stat-label">±σ</div><div class="stat-val" id="m-stdev">—</div></div>
+            </div>
+          </div>
+          <div class="section-label">Machine state fractions</div>
+          <div id="state-bars"><div class="placeholder small">run a simulation</div></div>
+          <div class="legend">
+            <span><i style="background:#3ddc84"></i>busy</span>
+            <span><i style="background:#f0a83a"></i>blocked</span>
+            <span><i style="background:#4aa3ff"></i>starved</span>
+            <span><i style="background:#b98aff"></i>setup</span>
+            <span><i style="background:#ff4d4d"></i>down</span>
+            <span><i style="background:#3a424d"></i>offshift</span>
+            <span><i style="background:#6b7684"></i>idle</span>
+          </div>
+          <div class="section-label">Capacity pass</div>
+          <div class="card kv" id="capacity-card"><div class="placeholder small">run analyze</div></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ---- DECIDE VIEW ---- -->
+    <section class="view" id="view-decide">
+      <div class="view-toolbar">
+        <span class="section-label">Decision tools · bounded design spaces</span>
+        <span class="right">
+          <button class="btn" id="btn-sweep">Sweep</button>
+          <button class="btn amber" id="btn-recommend">Recommend</button>
+          <button class="btn" id="btn-sensitivity">Sensitivity</button>
+        </span>
+      </div>
+      <div class="decide-row">
+        <div class="decide-left">
+          <div class="section-label">Design space (JSON)</div>
+          <textarea id="space-editor" spellcheck="false"></textarea>
+          <div class="decide-opts">
+            <label>objective <select id="objective-picker"></select></label>
+            <label>top_k <input id="top-k" type="number" value="3" min="1" style="width:52px"></label>
+            <label>±% <input id="sens-percent" type="number" value="10" min="0.1" style="width:56px"></label>
+            <label>workers <input id="sweep-workers" type="number" value="1" min="1" style="width:52px"></label>
+          </div>
+        </div>
+        <div class="decide-right">
+          <div id="verdict-card"></div>
+          <div id="decide-results"><div class="placeholder">Run Sweep, Recommend, or Sensitivity against the current document.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- REPORTS VIEW ---- -->
+    <section class="view" id="view-reports">
+      <div class="view-toolbar">
+        <span class="section-label">Reports · deterministic offline HTML</span>
+        <span class="right">
+          <button class="btn amber" id="btn-report">Report</button>
+          <button class="btn" id="btn-compare">Compare</button>
+          <button class="btn" id="btn-report-compare">Compare report</button>
+          <button class="btn" id="btn-report-newtab">Open in tab ↗</button>
+        </span>
+      </div>
+      <div class="reports-row">
+        <div class="reports-left">
+          <div class="section-label">Variant document (for compare)</div>
+          <div class="editor-toolbar">
+            <div class="seg" id="variant-fmt-toggle">
+              <button data-fmt="mir">.mir</button>
+              <button data-fmt="json" class="active">.json</button>
+            </div>
+            <select id="variant-example-picker"><option value="">example…</option></select>
+          </div>
+          <textarea id="variant-editor" spellcheck="false" placeholder="paste or pick the variant document…"></textarea>
+          <div id="compare-result"></div>
+        </div>
+        <div class="reports-right">
+          <iframe id="report-frame" title="report"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- CODEGEN VIEW ---- -->
+    <section class="view" id="view-codegen">
+      <div class="view-toolbar">
+        <span class="section-label">Codegen · vendor-neutral skeletons</span>
+        <span class="right">
+          <label class="inline-label">backend <select id="backend-picker"></select></label>
+          <button class="btn amber" id="btn-emit">Emit</button>
+          <button class="btn" id="btn-emit-zip">⇩ Download zip</button>
+        </span>
+      </div>
+      <div class="codegen-row">
+        <div id="file-tree"><div class="placeholder">Emit to list generated files.</div></div>
+        <pre id="file-content"></pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ BOTTOM CONSOLE ============ -->
+<div id="bottom-panel">
+  <div class="panel-tabs">
+    <button class="panel-tab active" data-panel="console">console</button>
+    <button class="panel-tab" data-panel="diagnostics">diagnostics (<span id="diag-count">0</span>)</button>
+    <span class="right note">deterministic · same seed → same output</span>
+  </div>
+  <div class="panel-body active" id="panel-console"></div>
+  <div class="panel-body" id="panel-diagnostics"></div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
