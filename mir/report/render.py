@@ -13,7 +13,7 @@ from mir.report.template import escaped, render_document
 from mir.sim import Scenario, SimulationResult, simulate
 
 
-STATE_ORDER = ("busy", "idle", "blocked", "starved", "setup", "down")
+STATE_ORDER = ("busy", "idle", "blocked", "starved", "setup", "down", "offshift")
 STATE_COLORS = {
     "busy": "#1570ef",
     "idle": "#667085",
@@ -21,6 +21,7 @@ STATE_COLORS = {
     "starved": "#7f56d9",
     "setup": "#0891b2",
     "down": "#d92d20",
+    "offshift": "#344054",
 }
 NODE_WIDTH = 220
 NODE_HEIGHT = 118
@@ -114,6 +115,7 @@ def _scenario_details(scenario: Scenario) -> str:
             _meta_item("Replications", scenario.replications),
             _meta_item("Seed range", f"{scenario.seed}–{scenario.seed + scenario.replications - 1}"),
             _meta_item("Measurement", f"{_number(scenario.measurement_s / 3600)} h per replication"),
+            _meta_item("Dispatch", scenario.dispatch.value),
             _meta_item("Arrivals", arrivals),
         ]
     )
@@ -187,7 +189,10 @@ def _flow_label(flow: MaterialFlow) -> str:
         if flow.buffer_capacity is None
         else f"cap {flow.buffer_capacity}"
     )
-    return _short(f"{flow.id} | {flow.material} | {capacity}", 42)
+    return _short(
+        f"{flow.id} | {flow.material} | {flow.units_per_batch}/batch | {capacity}",
+        42,
+    )
 
 
 def _flow_art(flow: MaterialFlow, index: int, positions: dict[str, tuple[float, float]]) -> str:
@@ -403,14 +408,15 @@ def _render_buffers(factory: Factory, simulation: SimulationResult) -> str:
         mean, peak, ending = metrics if metrics is not None else (None, None, None)
         rows.append(
             f'<tr><td><strong>{escaped(flow_id)}</strong><br><span class="muted">{escaped(flow.material)}</span></td>'
+            f'<td class="number">{flow.units_per_batch}</td>'
             f'<td class="number">{escaped(capacity)}</td>'
             f'<td class="number">{_number(mean) if mean is not None else "n/a"}</td>'
             f'<td class="number">{peak if peak is not None else "n/a"}</td>'
             f'<td class="number">{_number(ending) if ending is not None else "n/a"}</td></tr>'
         )
     content = (
-        '<div class="table-wrap"><table><thead><tr><th>Flow buffer</th><th class="number">Capacity</th>'
-        '<th class="number">Mean occupancy</th><th class="number">Peak observed</th>'
+        '<div class="table-wrap"><table><thead><tr><th>Flow buffer</th><th class="number">Units/batch</th>'
+        '<th class="number">Capacity</th><th class="number">Mean occupancy</th><th class="number">Peak observed</th>'
         '<th class="number">Ending occupancy</th></tr></thead><tbody>'
         + "".join(rows)
         + "</tbody></table></div>"
@@ -708,5 +714,5 @@ def render_comparison_report(
 
 def write_report(html: str, path: str | Path) -> Path:
     destination = Path(path)
-    destination.write_text(html, encoding="utf-8")
+    destination.write_text(html, encoding="utf-8", newline="\n")
     return destination

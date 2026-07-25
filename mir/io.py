@@ -35,16 +35,19 @@ def dumps_canonical(factory: Factory) -> str:
 
 
 def _read_source(source: str | bytes | Path) -> str:
-    if isinstance(source, bytes):
-        return source.decode("utf-8")
-    if isinstance(source, Path):
-        return source.read_text(encoding="utf-8")
-    if source.lstrip().startswith(("{", "[")):
+    try:
+        if isinstance(source, bytes):
+            return source.decode("utf-8")
+        if isinstance(source, Path):
+            return source.read_text(encoding="utf-8")
+        if source.lstrip().startswith(("{", "[")):
+            return source
+        path = Path(source)
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
         return source
-    path = Path(source)
-    if path.is_file():
-        return path.read_text(encoding="utf-8")
-    return source
+    except UnicodeDecodeError as exc:
+        raise IRLoadError(f"Manufacturing IR input is not valid UTF-8: {exc}") from exc
 
 
 def loads_factory(source: str | bytes | Path) -> Factory:
@@ -72,7 +75,7 @@ def loads_factory(source: str | bytes | Path) -> Factory:
 
 def write_factory(factory: Factory, path: str | Path) -> Path:
     destination = Path(path)
-    destination.write_text(dumps_canonical(factory), encoding="utf-8")
+    destination.write_text(dumps_canonical(factory), encoding="utf-8", newline="\n")
     return destination
 
 

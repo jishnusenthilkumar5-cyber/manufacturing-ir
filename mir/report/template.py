@@ -25,6 +25,7 @@ CSS = """
   --starved: #7f56d9;
   --setup: #06aed4;
   --down: #d92d20;
+  --offshift: #344054;
   --other: #475467;
 }
 * {
@@ -318,6 +319,9 @@ tbody tr.is-bottleneck td {
 }
 .state-down {
   background: var(--down);
+}
+.state-offshift {
+  background: var(--offshift);
 }
 .state-other {
   background: var(--other);

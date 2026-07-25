@@ -49,7 +49,7 @@ def dumps_mir(factory: Factory) -> str:
 
 def write_mir(factory: Factory, path: str | Path) -> Path:
     destination = Path(path)
-    destination.write_text(dumps_mir(factory), encoding="utf-8")
+    destination.write_text(dumps_mir(factory), encoding="utf-8", newline="\n")
     return destination
 
 
@@ -70,6 +70,9 @@ def _machine_lines(machine: Machine) -> list[str]:
             f"{field}availability(mtbf={_duration(machine.availability.mtbf_s)}, "
             f"mttr={_duration(machine.availability.mttr_s)})"
         )
+    if machine.calendar:
+        calendar = [window.model_dump(mode="json") for window in machine.calendar]
+        lines.append(f"{field}calendar = {_json(calendar)}")
     if machine.attrs:
         lines.append(f"{field}attrs = {_json(machine.attrs)}")
     lines.append(f"{prefix}}}")
@@ -89,6 +92,8 @@ def _operation_lines(operation: Operation) -> list[str]:
         lines.append(f"{field}yield = {_number(operation.yield_fraction)}")
     if operation.batch_size != 1:
         lines.append(f"{field}batch = {operation.batch_size}")
+    if operation.priority != 0:
+        lines.append(f"{field}priority = {operation.priority}")
     if operation.attrs:
         lines.append(f"{field}attrs = {_json(operation.attrs)}")
     lines.append(f"{prefix}}}")
@@ -110,6 +115,8 @@ def _flow_lines(flow: MaterialFlow) -> list[str]:
         lines.append(f"{field}cap = {flow.buffer_capacity}")
     if flow.transport_time_s != 0.0:
         lines.append(f"{field}transport = {_duration(flow.transport_time_s)}")
+    if flow.units_per_batch != 1:
+        lines.append(f"{field}units = {flow.units_per_batch}")
     lines.append(f"{prefix}}}")
     return lines
 

@@ -77,8 +77,13 @@ def test_factory_report_contains_engineering_content() -> None:
     assert "BOTTLENECK" in report
     assert "Machine-state utilization" in report
     assert "State fractions" in report
-    for state in ("busy", "idle", "blocked", "starved", "setup", "down"):
+    for state in ("busy", "idle", "blocked", "starved", "setup", "down", "offshift"):
         assert state in report
+    assert "--offshift: #344054" in report
+    assert ".state-offshift" in report
+    assert "Dispatch" in report
+    assert "fifo-fair" in report
+    assert "Units/batch" in report
     assert "Buffer performance" in report
     assert "Mean occupancy" in report
     assert "Ending WIP" in report

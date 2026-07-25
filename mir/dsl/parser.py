@@ -76,6 +76,7 @@ _MACHINE_FIELDS = {
     "setup": "setup_time_s",
     "setup_time_s": "setup_time_s",
     "availability": "availability",
+    "calendar": "calendar",
     "attrs": "attrs",
 }
 _OPERATION_FIELDS = {
@@ -89,6 +90,7 @@ _OPERATION_FIELDS = {
     "yield_fraction": "yield_fraction",
     "batch": "batch_size",
     "batch_size": "batch_size",
+    "priority": "priority",
     "attrs": "attrs",
 }
 _FLOW_FIELDS = {
@@ -100,6 +102,8 @@ _FLOW_FIELDS = {
     "buffer_capacity": "buffer_capacity",
     "transport": "transport_time_s",
     "transport_time_s": "transport_time_s",
+    "units": "units_per_batch",
+    "units_per_batch": "units_per_batch",
 }
 _SIGNAL_FIELDS = {
     "tag": "tag",
@@ -241,6 +245,8 @@ class Parser:
                     value = self._parse_duration(canonical)
                 elif canonical == "availability":
                     value = self._parse_nullable_availability()
+                elif canonical == "calendar":
+                    value = self._parse_json_array("calendar")
                 else:
                     value = self._parse_json_object("attrs")
             self._store(fields, canonical, value, key_token)
@@ -262,7 +268,7 @@ class Parser:
                 value = self._parse_distribution()
             elif canonical == "yield_fraction":
                 value = self._parse_number(canonical)
-            elif canonical == "batch_size":
+            elif canonical in {"batch_size", "priority"}:
                 value = self._parse_integer(canonical)
             else:
                 value = self._parse_json_object("attrs")
@@ -300,6 +306,8 @@ class Parser:
                 value = self._parse_number(canonical)
             elif canonical == "buffer_capacity":
                 value = self._parse_nullable_integer(canonical)
+            elif canonical == "units_per_batch":
+                value = self._parse_integer(canonical)
             else:
                 value = self._parse_duration(canonical)
             self._store(fields, canonical, value, key_token)
@@ -436,6 +444,12 @@ class Parser:
         value = self._parse_json_value()
         if not isinstance(value.value, dict):
             self._raise(f"{description} must be a JSON object", value.token)
+        return value
+
+    def _parse_json_array(self, description: str) -> LocatedValue:
+        value = self._parse_json_value()
+        if not isinstance(value.value, list):
+            self._raise(f"{description} must be a JSON array", value.token)
         return value
 
     def _parse_nullable_json_object(self, description: str) -> LocatedValue:

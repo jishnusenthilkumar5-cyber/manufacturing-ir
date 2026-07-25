@@ -1,0 +1,31 @@
+factory assembly-2to1 name "2:1 Assembly Cell" {
+  schema_version = "0.2.0"
+  description = "Two component units become one finished assembly."
+  provenance = authored
+  source = "examples/line.mir"
+
+  machine assembler {
+    name = "Assembly Cell"
+    class = "assembly"
+    capabilities = ["assemble"]
+    calendar = [{"day": 0, "end_s": 43200.0, "start_s": 0.0}, {"day": 1, "end_s": 43200.0, "start_s": 0.0}, {"day": 2, "end_s": 43200.0, "start_s": 0.0}, {"day": 3, "end_s": 43200.0, "start_s": 0.0}, {"day": 4, "end_s": 43200.0, "start_s": 0.0}]
+  }
+
+  operation assemble {
+    name = "Assemble"
+    kind = "assemble"
+    on = [assembler]
+    cycle = constant(30.0s)
+    priority = 10
+  }
+
+  flow components {
+    "component" -> assemble
+    cap = 20
+    units = 2
+  }
+
+  flow product {
+    "finished-assembly" assemble ->
+  }
+}

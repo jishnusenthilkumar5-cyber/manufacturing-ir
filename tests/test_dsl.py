@@ -16,6 +16,7 @@ from mir import (
     Operation,
     Provenance,
     ProvenanceKind,
+    ShiftWindow,
     Signal,
     SignalDataType,
     SignalSemantic,
@@ -35,6 +36,10 @@ def rich_factory() -> Factory:
             num_stations=2,
             setup_time_s=7.5,
             availability=Availability(mtbf_s=5_400.0, mttr_s=180.0),
+            calendar=[
+                ShiftWindow(day=0, start_s=21_600.0, end_s=50_400.0),
+                ShiftWindow(day=1, start_s=21_600.0, end_s=50_400.0),
+            ],
             attrs={
                 "active": True,
                 "limits": [None, -2, 3.5, {"note": "温度 # nominal"}],
@@ -68,6 +73,7 @@ def rich_factory() -> Factory:
             cycle_time=ConstantDistribution(value_s=12.5),
             yield_fraction=0.975,
             batch_size=3,
+            priority=7,
             attrs={"recipe": {"passes": 2, "label": "α"}},
         ),
         Operation(
@@ -104,12 +110,14 @@ def rich_factory() -> Factory:
                     input_port="feed" if suffix == "constant" else None,
                     buffer_capacity=0 if suffix == "constant" else None,
                     transport_time_s=2.25 if suffix == "constant" else 0.0,
+                    units_per_batch=2 if suffix == "constant" else 1,
                 ),
                 MaterialFlow(
                     id=f"out-{suffix}",
                     material=f"part-{suffix}",
                     from_op=operation.id,
                     routing_weight=0.25 if suffix == "constant" else 1.0,
+                    units_per_batch=2 if suffix == "constant" else 1,
                 ),
             ]
         )
@@ -135,7 +143,7 @@ def rich_factory() -> Factory:
         meta=FactoryMeta(
             id="rich-line",
             name="Línea de producción 東京",
-            description="Every v0.1 field; # remains text.",
+            description="Every v0.2 field; # remains text.",
             provenance=Provenance(
                 kind=ProvenanceKind.RECONSTRUCTED,
                 source="測定/line-a",
@@ -158,7 +166,7 @@ def test_catalog_models_round_trip(catalog_name: str) -> None:
     assert rendered.endswith("\n")
 
 
-def test_every_v01_field_and_distribution_round_trips() -> None:
+def test_every_v02_field_and_distribution_round_trips() -> None:
     factory = rich_factory()
     rendered = dumps_mir(factory)
     loaded = loads_mir(rendered)
@@ -168,6 +176,9 @@ def test_every_v01_field_and_distribution_round_trips() -> None:
     assert "cycle = normal(20.0s, 1.75s)" in rendered
     assert "cycle = exponential(9.25s)" in rendered
     assert "availability(mtbf=5400.0s, mttr=180.0s)" in rendered
+    assert 'calendar = [{"day": 0, "end_s": 50400.0, "start_s": 21600.0}' in rendered
+    assert "priority = 7" in rendered
+    assert "units = 2" in rendered
     assert '"温度 # nominal"' in rendered
 
 
@@ -184,9 +195,9 @@ def test_entity_input_order_does_not_change_canonical_output() -> None:
 def test_compact_m3_syntax_comments_and_duration_units() -> None:
     text = '''# authored source
 factory "line-01" name "Line # 01" {
-  machine m1 { class=cnc capabilities=[mill] stations=2 setup=0.5min availability(mtbf=1h mttr=2min) }
-  operation op1 { kind=mill on=[m1] cycle=normal(0.5min, 2s) yield=0.98 }
-  flow inlet  { part -> op1 cap=10 } # inline comment
+  machine m1 { class=cnc capabilities=[mill] stations=2 setup=0.5min availability(mtbf=1h mttr=2min) calendar=[{"day": 0, "start_s": 0, "end_s": 43200}] }
+  operation op1 { kind=mill on=[m1] cycle=normal(0.5min, 2s) yield=0.98 priority=4 }
+  flow inlet  { part -> op1 cap=10 units=2 } # inline comment
   flow outlet { part op1 -> transport=1min }
 }
 '''
@@ -198,7 +209,12 @@ factory "line-01" name "Line # 01" {
         mtbf_s=3_600.0,
         mttr_s=120.0,
     )
+    assert factory.machines[0].calendar == [
+        ShiftWindow(day=0, start_s=0.0, end_s=43_200.0)
+    ]
     assert factory.operations[0].cycle_time == NormalDistribution(mean_s=30.0, std_s=2.0)
+    assert factory.operations[0].priority == 4
+    assert factory.flows[0].units_per_batch == 2
     assert factory.flows[1].transport_time_s == 60.0
     assert loads_mir(dumps_mir(factory)) == factory
 

@@ -19,6 +19,7 @@ _DEFAULT_MACHINE_STATES = (
     ("starved", 3),
     ("setup", 4),
     ("down", 5),
+    ("offshift", 6),
 )
 
 _ST_KEYWORDS = frozenset(

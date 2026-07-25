@@ -1,0 +1,10 @@
+{
+  "machines.assembler.num_stations": [
+    1,
+    2
+  ],
+  "operations.assemble.cycle_time_scale": [
+    1.0,
+    0.8
+  ]
+}

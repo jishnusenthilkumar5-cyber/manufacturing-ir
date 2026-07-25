@@ -224,7 +224,12 @@ def test_mir031_reports_alternative_ratio_and_capacity_conflicts() -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["assembly-merge.json", "faster-alternative.json", "unbalanced-line.json"],
+    [
+        "assembly-2to1.json",
+        "assembly-merge.json",
+        "faster-alternative.json",
+        "unbalanced-line.json",
+    ],
 )
 def test_committed_examples_are_canonical_v02(name: str) -> None:
     source = Path(__file__).parents[1] / "examples" / name

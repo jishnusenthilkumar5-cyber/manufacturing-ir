@@ -84,6 +84,11 @@ def test_invalid_json_has_location() -> None:
         loads_factory("{not-json")
 
 
+def test_invalid_utf8_is_a_load_error() -> None:
+    with pytest.raises(IRLoadError, match="not valid UTF-8"):
+        loads_factory(b"\xff")
+
+
 @st.composite
 def factories(draw):
     station_count = draw(st.integers(min_value=1, max_value=6))

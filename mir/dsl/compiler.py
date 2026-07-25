@@ -101,6 +101,7 @@ def _machine_payload(node: FactoryNode, entity: EntityNode) -> dict[str, Any]:
         "num_stations": _entity_field(entity, "num_stations", 1),
         "setup_time_s": _entity_field(entity, "setup_time_s", 0.0),
         "availability": _availability_payload(_entity_field(entity, "availability", None)),
+        "calendar": _entity_field(entity, "calendar", []),
         "attrs": _entity_field(entity, "attrs", {}),
     }
 
@@ -114,6 +115,7 @@ def _operation_payload(node: FactoryNode, entity: EntityNode) -> dict[str, Any]:
         "cycle_time": _distribution_payload(_entity_required(node, entity, "cycle_time")),
         "yield_fraction": _entity_field(entity, "yield_fraction", 1.0),
         "batch_size": _entity_field(entity, "batch_size", 1),
+        "priority": _entity_field(entity, "priority", 0),
         "attrs": _entity_field(entity, "attrs", {}),
     }
 
@@ -128,6 +130,7 @@ def _flow_payload(node: FactoryNode, entity: EntityNode) -> dict[str, Any]:
         "routing_weight": _entity_field(entity, "routing_weight", 1.0),
         "buffer_capacity": _entity_field(entity, "buffer_capacity", None),
         "transport_time_s": _entity_field(entity, "transport_time_s", 0.0),
+        "units_per_batch": _entity_field(entity, "units_per_batch", 1),
     }
 
 

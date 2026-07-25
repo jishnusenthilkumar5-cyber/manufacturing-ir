@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from mir import Availability
 from mir.sim import Scenario, SimulationError, simulate
-from mir.synth import FactoryBuilder, rework_loop, serial_line
+from mir.synth import CATALOG, FactoryBuilder, rework_loop, serial_line
 
 
 def test_constant_single_station_has_exact_throughput_and_conservation() -> None:
@@ -21,8 +23,16 @@ def test_constant_single_station_has_exact_throughput_and_conservation() -> None
 def test_same_seed_is_byte_for_byte_reproducible() -> None:
     factory = serial_line(stations=2, cycle_times_s=[7, 11], buffer_capacity=2)
     scenario = Scenario(horizon_s=7200, warmup_s=600, seed=1847, replications=3)
-    first = simulate(factory, scenario).to_dict()
-    second = simulate(factory, scenario).to_dict()
+    first = json.dumps(
+        simulate(factory, scenario).to_dict(),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    second = json.dumps(
+        simulate(factory, scenario).to_dict(),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
     assert first == second
 
 
@@ -118,6 +128,16 @@ def test_weighted_rework_loop_executes_and_conserves_material() -> None:
     assert metrics.throughput_units_per_hour == pytest.approx(144, rel=0.05)
     assert metrics.cycles_by_operation["process"] > metrics.output_units
     assert metrics.conservation_error == 0
+
+
+@pytest.mark.parametrize("catalog_name", sorted(CATALOG))
+def test_catalog_models_conserve_material(catalog_name: str) -> None:
+    metrics = simulate(
+        CATALOG[catalog_name](),
+        Scenario(horizon_s=20_000, warmup_s=2_000, seed=91),
+    ).replications[0]
+    assert metrics.conservation_error == 0
+    assert set(metrics.conservation_by_flow.values()) == {0}
 
 
 def test_unknown_arrival_flow_is_rejected() -> None:

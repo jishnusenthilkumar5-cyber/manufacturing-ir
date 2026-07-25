@@ -221,6 +221,7 @@ def test_missing_state_vocabulary_uses_known_fallback(
     assert "STATE_STARVED := 3" in text
     assert "STATE_SETUP := 4" in text
     assert "STATE_DOWN := 5" in text
+    assert "STATE_OFFSHIFT := 6" in text
 
 
 def test_identifiers_are_sanitized_and_iec_keywords_are_escaped() -> None:
@@ -351,7 +352,7 @@ def test_manifest_is_complete_and_sorted() -> None:
 
     assert manifest == {
         "backend": "st",
-        "factory": {"id": "line-01", "schema_version": "0.1.0"},
+        "factory": {"id": "line-01", "schema_version": "0.2.0"},
         "machines": [
             {
                 "machine_id": "machine-01",
