@@ -284,7 +284,7 @@ def test_static_index_fallback(client: TestClient) -> None:
     for path in ("/", "/some/spa/route"):
         response = client.get(path)
         assert response.status_code == 200
-        assert "MIR Workbench UI goes here" in response.text
+        assert "MIR Workbench" in response.text
 
 
 def test_unmatched_api_returns_404(client: TestClient) -> None:
