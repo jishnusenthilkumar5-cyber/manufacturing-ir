@@ -195,9 +195,25 @@ def _flow_label(flow: MaterialFlow) -> tuple[str, str]:
     )
 
 
+def _place_label(x: float, y: float, placed: list[tuple[float, float]]) -> float:
+    y = max(y, 26.0)
+    def collides(candidate: float) -> bool:
+        return any(abs(x - px) < 200 and abs(candidate - py) < 32 for px, py in placed)
+    if collides(y):
+        for step in (-32, 32, -64, 64, -96, 96, -128, 128):
+            candidate = y + step
+            if candidate >= 26.0 and not collides(candidate):
+                y = candidate
+                break
+        else:
+            while collides(y):
+                y += 32
+    placed.append((x, y))
+    return y
+
+
 def _flow_label_svg(flow: MaterialFlow, x: float, y: float) -> str:
     first, second = _flow_label(flow)
-    y = max(y, 26.0)
     return (
         f'<text class="flow-label" x="{x:.1f}" y="{y:.1f}" text-anchor="middle">'
         f'<tspan x="{x:.1f}" dy="0">{escaped(first)}</tspan>'
@@ -207,7 +223,7 @@ def _flow_label_svg(flow: MaterialFlow, x: float, y: float) -> str:
 
 def _flow_art(
     flow: MaterialFlow, index: int, positions: dict[str, tuple[float, float]]
-) -> tuple[str, str]:
+) -> tuple[str, float, float | None]:
     source = positions.get(flow.from_op or "")
     target = positions.get(flow.to_op or "")
     if source and target and flow.from_op == flow.to_op:
@@ -233,27 +249,25 @@ def _flow_art(
             path = f"M {start_x:.1f} {start_y:.1f} C {start_x - 70:.1f} {bend:.1f}, {end_x + 70:.1f} {bend:.1f}, {end_x:.1f} {end_y:.1f}"
             arrow = _arrow(end_x, end_y, "left")
             curve_bottom = 0.25 * (start_y + end_y) / 2 + 0.75 * bend
-            return (
-                f'<path class="flow-line" d="{path}"></path>{arrow}',
-                _flow_label_svg(flow, (start_x + end_x) / 2, curve_bottom + 16),
-            )
-        label_x, label_y = (start_x + end_x) / 2, min(start_y, end_y) - 26 - (index % 3) * 30
+            art = f'<path class="flow-line" d="{path}"></path>{arrow}'
+            return art, (start_x + end_x) / 2, curve_bottom + 16
+        label_x, label_y = (start_x + end_x) / 2, min(start_y, end_y) - 26
     elif target:
         target_x, target_y = target
         start_x, end_x, end_y = target_x - 150, target_x, target_y + NODE_HEIGHT / 2
         path = f"M {start_x:.1f} {end_y:.1f} L {end_x:.1f} {end_y:.1f}"
         arrow = _arrow(end_x, end_y, "right")
-        label_x, label_y = (start_x + end_x) / 2, end_y - 26 - (index % 3) * 30
+        label_x, label_y = (start_x + end_x) / 2, end_y - 26
     elif source:
         source_x, source_y = source
         start_x, end_x, end_y = source_x + NODE_WIDTH, source_x + NODE_WIDTH + 150, source_y + NODE_HEIGHT / 2
         path = f"M {start_x:.1f} {end_y:.1f} L {end_x:.1f} {end_y:.1f}"
         arrow = _arrow(end_x, end_y, "right")
-        label_x, label_y = (start_x + end_x) / 2, end_y - 26 - (index % 3) * 30
+        label_x, label_y = (start_x + end_x) / 2, end_y - 26
     else:
-        return "", ""
+        return "", 0.0, None
     art = f'<path class="flow-line" d="{path}"></path>{arrow}'
-    return art, _flow_label_svg(flow, label_x, label_y)
+    return art, label_x, label_y
 
 
 def _render_topology(
@@ -265,12 +279,15 @@ def _render_topology(
     ordered, positions, width, height = _topology_positions(factory, topology)
     operations = factory.operation_map()
     states_by_machine = simulation.summary.machine_state_fractions_mean
-    flow_parts = [
-        _flow_art(flow, index, positions)
-        for index, flow in enumerate(sorted(factory.flows, key=lambda item: item.id))
-    ]
-    flows = "".join(art for art, _ in flow_parts)
-    flow_labels = "".join(label for _, label in flow_parts)
+    sorted_flows = sorted(factory.flows, key=lambda item: item.id)
+    flow_parts = [_flow_art(flow, index, positions) for index, flow in enumerate(sorted_flows)]
+    flows = "".join(art for art, _, _ in flow_parts)
+    placed: list[tuple[float, float]] = []
+    flow_labels = "".join(
+        _flow_label_svg(flow, label_x, _place_label(label_x, label_y, placed))
+        for flow, (_, label_x, label_y) in zip(sorted_flows, flow_parts)
+        if label_y is not None
+    )
     nodes: list[str] = []
     for operation_id in ordered:
         operation = operations[operation_id]
