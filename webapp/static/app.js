@@ -855,3 +855,229 @@ async function init() {
 }
 
 init();
+
+/* ============================================================
+   GUIDED DEMO — scripted walkthrough of the whole toolchain
+
+   Six beats, in the order the compiler actually runs: author →
+   validate → analyze → simulate → decide → hand off. Each beat
+   drives the same public /api the toolbar drives, so the demo
+   cannot show anything the product cannot do.
+   ============================================================ */
+
+/* Design space for the demo factory. The bundled sweep-space.json
+   targets the assembly example, whose IDs do not exist here. */
+const DEMO_SPACE = {
+  'machines.machine-02.num_stations': [1, 2],
+  'operations.operation-02.cycle_time_scale': [1.0, 0.75],
+};
+
+const DEMO_SCENARIO = { horizon_h: 24, warmup_h: 1, seed: 1, replications: 5 };
+
+const demo = {
+  active: false,
+  paused: false,
+  index: 0,
+  timer: null,
+  token: 0,
+};
+
+function demoCloseModals() {
+  $$('.modal-backdrop').forEach((bd) => { bd.hidden = true; });
+}
+
+function demoFocus(action) {
+  $$('.toolbar .tbtn').forEach((b) => b.classList.toggle('demo-focus', b.dataset.action === action));
+}
+
+const DEMO_STEPS = [
+  {
+    title: 'A factory, written as source code',
+    copy: 'Three stations on a line — <b>20s</b>, <b>55s</b>, <b>25s</b> cycle times, 20-unit buffers between them. '
+        + 'The whole plant is four primitives: <b>Machine</b>, <b>Operation</b>, <b>MaterialFlow</b>, <b>Signal</b>. '
+        + 'Text, so it diffs and reviews like any other engineering artifact.',
+    cli: 'mir synth unbalanced-line -o line.mir',
+    dwell: 7000,
+    async run() {
+      demoFocus(null);
+      const r = await postJSON('/synth', { generator: 'unbalanced-line', options: {} });
+      setDocument(r.mir_text, 'mir', 'unbalanced-line.mir');
+      logCmd('mir synth unbalanced-line -o unbalanced-line.mir');
+      logLine('generated synthetic factory — 3 machines, 3 operations, 4 flows', 'console-ok');
+    },
+  },
+  {
+    title: 'The compiler checks it before anyone touches hardware',
+    copy: 'Structural and semantic passes produce numbered diagnostics — <b>MIR001</b> through <b>MIR031</b> — '
+        + 'the same way a type checker does. Unreachable operations, dangling references, impossible ratios: '
+        + 'caught at author time, not on the shop floor.',
+    cli: 'mir validate unbalanced-line.mir',
+    dwell: 6500,
+    async run() {
+      demoFocus('validate');
+      await ACTIONS.validate();
+    },
+  },
+  {
+    title: 'Analytic capacity: where the line tops out, and why',
+    copy: 'A closed-form pass propagates batch ratios and yield backward from the outlet and finds the binding resource. '
+        + 'Ceiling <span class="hl">65.45 units/hour</span>, bottleneck <span class="hl">machine-02</span>. '
+        + 'For a deterministic DAG this bound is exact — the pass says so rather than making you trust it.',
+    cli: 'mir analyze unbalanced-line.mir',
+    dwell: 7500,
+    async run() {
+      demoFocus('analyze');
+      await ACTIONS.analyze();
+    },
+  },
+  {
+    title: 'Simulate: the loss shows up as blocking and starvation',
+    copy: 'A deterministic discrete-event kernel runs 24 hours × 5 replications. '
+        + 'Machine 01 sits <b>blocked 63.6%</b> of the time, machine 02 runs <b>100%</b>, machine 03 is <b>starved 54.5%</b>. '
+        + 'Two thirds of the line is waiting on one station. Same seed, same answer, every run.',
+    cli: 'mir simulate unbalanced-line.mir --horizon-h 24 --seed 1 --replications 5',
+    dwell: 8000,
+    async run() {
+      demoFocus('simulate');
+      $('#sc-reps').value = String(DEMO_SCENARIO.replications);
+      $('#sc-seed').value = String(DEMO_SCENARIO.seed);
+      await ACTIONS.simulate();
+    },
+  },
+  {
+    title: 'Decide: search the fixes, ranked, before buying any of them',
+    copy: 'Bounded design space — add a station at machine 02, or speed its cycle 25%. Every point is simulated against '
+        + 'the baseline with paired seeds. Best point: <span class="hl">+119.9% throughput</span>. '
+        + 'And the bottleneck <b>moves to machine-03</b> — which is exactly the second decision you needed to know about.',
+    cli: 'mir recommend unbalanced-line.mir sweep-space.json --top-k 3',
+    dwell: 9000,
+    async run() {
+      demoFocus('recommend');
+      $('#space-editor').value = JSON.stringify(DEMO_SPACE, null, 2);
+      $('#decide-topk').value = '3';
+      $('#decide-objective').value = 'throughput';
+      openDecide('recommend');
+      await runDecide('recommend');
+    },
+  },
+  {
+    title: 'Hand off: the IR lowers to controls code',
+    copy: 'One vendor-neutral <b>IEC 61131-3 Structured Text</b> skeleton per machine, plus a manifest — the state enum, '
+        + 'counters, and function blocks the controls engineer fills in. Deliberately not deployable and labelled as such: '
+        + 'this is the reviewable seam between design intent and the PLC, not a robot that programs your factory.',
+    cli: 'mir emit st unbalanced-line.mir -o generated-st/',
+    dwell: 9000,
+    async run() {
+      demoCloseModals();
+      demoFocus('emit');
+      await ACTIONS.emit();
+    },
+  },
+];
+
+function demoRenderChrome() {
+  const step = DEMO_STEPS[demo.index];
+  $('#demo-step').textContent = `${String(demo.index + 1).padStart(2, '0')} / ${String(DEMO_STEPS.length).padStart(2, '0')}`;
+  $('#demo-title').textContent = step.title;
+  $('#demo-copy').innerHTML = step.copy;
+  $('#demo-cli').textContent = step.cli;
+  $('#demo-prev').disabled = demo.index === 0;
+  $('#demo-next').disabled = demo.index === DEMO_STEPS.length - 1;
+  $('#demo-toggle').textContent = demo.paused ? '▶' : '❙❙';
+}
+
+function demoClearTimer() {
+  if (demo.timer) { clearTimeout(demo.timer); demo.timer = null; }
+}
+
+/* Progress bar doubles as the auto-advance countdown. The last step
+   never auto-advances — it leaves the emitted code on screen so the
+   viewer can read it, and waits to be dismissed. */
+function demoStartDwell(ms) {
+  const fill = $('#demo-progress-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  void fill.offsetWidth;
+  if (demo.index === DEMO_STEPS.length - 1) {
+    fill.style.width = '100%';
+    logLine('demo complete — every panel above is live; edit the source and re-run any step', 'console-dim');
+    return;
+  }
+  if (demo.paused) return;
+  fill.style.transition = `width ${ms}ms linear`;
+  fill.style.width = '100%';
+  demo.timer = setTimeout(() => demoGo(demo.index + 1), ms);
+}
+
+async function demoGo(index) {
+  demoClearTimer();
+  demo.index = Math.max(0, Math.min(DEMO_STEPS.length - 1, index));
+  const token = ++demo.token;
+  demoRenderChrome();
+
+  const step = DEMO_STEPS[demo.index];
+  if (demo.index < 4) demoCloseModals();
+  resetExit();
+  try { await step.run(); }
+  catch (err) { surfaceError('demo', err); }
+
+  /* A newer step started while this one was awaiting — drop this one. */
+  if (token !== demo.token || !demo.active) return;
+  demoStartDwell(step.dwell);
+}
+
+function demoStart() {
+  if (demo.active) { demoStop(); return; }
+  demo.active = true;
+  demo.paused = false;
+  document.body.classList.add('demo-active');
+  $('#demo-narration').hidden = false;
+  $('#demo-launch').classList.add('running');
+  $('#demo-launch').lastChild.textContent = 'exit demo';
+  logLine('guided demo — six steps, driving the same /api the toolbar drives', 'console-dim');
+  demoGo(0);
+}
+
+function demoStop() {
+  demoClearTimer();
+  demo.active = false;
+  demo.token++;
+  document.body.classList.remove('demo-active');
+  $('#demo-narration').hidden = true;
+  $('#demo-launch').classList.remove('running');
+  $('#demo-launch').lastChild.textContent = 'guided demo';
+  demoFocus(null);
+  demoCloseModals();
+}
+
+function demoTogglePause() {
+  demo.paused = !demo.paused;
+  demoRenderChrome();
+  if (demo.paused) {
+    demoClearTimer();
+    const fill = $('#demo-progress-fill');
+    const w = getComputedStyle(fill).width;
+    fill.style.transition = 'none';
+    fill.style.width = w;
+  } else {
+    demoStartDwell(DEMO_STEPS[demo.index].dwell);
+  }
+}
+
+$('#demo-launch').addEventListener('click', demoStart);
+$('#demo-exit').addEventListener('click', demoStop);
+$('#demo-toggle').addEventListener('click', demoTogglePause);
+$('#demo-next').addEventListener('click', () => demoGo(demo.index + 1));
+$('#demo-prev').addEventListener('click', () => demoGo(demo.index - 1));
+
+document.addEventListener('keydown', (e) => {
+  if (!demo.active) return;
+  if (e.key === 'ArrowRight') demoGo(demo.index + 1);
+  else if (e.key === 'ArrowLeft') demoGo(demo.index - 1);
+  else if (e.key === ' ' && e.target === document.body) { e.preventDefault(); demoTogglePause(); }
+});
+
+/* Deep link: /?demo=1 autostarts, so a shared link demos itself. */
+if (new URLSearchParams(location.search).has('demo')) {
+  setTimeout(demoStart, 900);
+}

@@ -65,6 +65,11 @@ The frontend is plain HTML/CSS/JS in `webapp/static/` (no build step) — edit t
 refresh the browser. The JSON API lives under `/api` (see `webapp/server.py`); interactive API
 docs are served at `/docs`.
 
+The **guided demo** button walks the whole toolchain in six auto-advancing steps: author,
+validate, analyze, simulate, decide, hand off. It drives the same `/api` the toolbar drives, so
+it cannot show anything the compiler cannot do. Appending `?demo=1` to the URL autostarts it.
+[`docs/demo.md`](docs/demo.md) covers both the browser and CLI walkthroughs.
+
 Deploy anywhere that runs a container:
 
 ```bash

@@ -32,6 +32,7 @@
       <div class="chip" data-stage="simulate"><span class="chip-ico">·</span><span class="chip-label">simulate</span></div>
     </div>
     <div class="header-right">
+      <button class="demo-launch" id="demo-launch"><span class="demo-launch-ico">▶</span>guided demo</button>
       <div class="header-factoid">factory <span id="hdr-factory">—</span> · provenance <span id="hdr-provenance">—</span></div>
       <div class="exit-pill" id="hdr-exit">exit 0</div>
     </div>
@@ -271,6 +272,25 @@
       <button class="modal-close" data-close>×</button>
     </div>
     <pre class="schema-content" id="schema-content"></pre>
+  </div>
+</div>
+
+<!-- ============ GUIDED DEMO NARRATION ============ -->
+<div class="demo-narration" id="demo-narration" hidden>
+  <div class="demo-progress"><div class="demo-progress-fill" id="demo-progress-fill"></div></div>
+  <div class="demo-body">
+    <div class="demo-step" id="demo-step">01 / 06</div>
+    <div class="demo-text">
+      <div class="demo-title" id="demo-title"></div>
+      <div class="demo-copy" id="demo-copy"></div>
+      <div class="demo-cli" id="demo-cli"></div>
+    </div>
+    <div class="demo-controls">
+      <button class="demo-btn" id="demo-prev" title="previous step">‹</button>
+      <button class="demo-btn" id="demo-toggle" title="pause / resume">❙❙</button>
+      <button class="demo-btn" id="demo-next" title="next step">›</button>
+      <button class="demo-btn demo-btn-exit" id="demo-exit" title="exit demo">esc</button>
+    </div>
   </div>
 </div>
 

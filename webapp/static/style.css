@@ -378,3 +378,69 @@ a:hover { color: #ffc45e; }
   flex: 1; min-height: 400px; overflow: auto; margin: 0; padding: 12px;
   font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; line-height: 16px; color: #9fb0c0;
 }
+
+/* ============================================================
+   GUIDED DEMO — launch button + narration overlay
+   ============================================================ */
+.demo-launch {
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 5px 11px; border: 1px solid #6a4a15; background: #1d1707; color: #f0a83a;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .3px;
+}
+.demo-launch:hover { border-color: #f0a83a; background: #241c09; }
+.demo-launch-ico { font-size: 8px; }
+.demo-launch.running { color: #8fdca4; border-color: #2f5a3c; background: #101a13; }
+
+.demo-narration {
+  position: fixed; z-index: 90; left: 50%; transform: translateX(-50%);
+  bottom: 22px; width: 940px; max-width: 94vw;
+  background: #12151b; border: 1px solid #6a4a15;
+  box-shadow: 0 0 50px rgba(0,0,0,.75);
+  font-family: 'IBM Plex Mono', monospace; color: #dde3ea;
+}
+.demo-narration[hidden] { display: none; }
+
+.demo-progress { height: 2px; background: #1c222c; }
+.demo-progress-fill {
+  height: 100%; width: 0; background: #f0a83a; transition: width .25s linear;
+}
+
+.demo-body { display: flex; align-items: center; gap: 16px; padding: 13px 16px; }
+
+.demo-step {
+  flex: none; font-size: 10px; color: #58637a; letter-spacing: 1.5px;
+  border-right: 1px solid #232a34; padding-right: 16px; align-self: stretch;
+  display: flex; align-items: center;
+}
+.demo-text { flex: 1; min-width: 0; }
+.demo-title {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px;
+  color: #f0a83a; letter-spacing: .2px; margin-bottom: 4px;
+}
+.demo-copy { font-size: 11.5px; line-height: 18px; color: #aeb9c6; }
+.demo-copy b { color: #dde3ea; font-weight: 500; }
+.demo-copy .hl { color: #8fdca4; }
+.demo-cli {
+  margin-top: 6px; font-size: 10px; color: #58637a;
+}
+.demo-cli::before { content: '$ '; color: #3d4654; }
+
+.demo-controls { flex: none; display: flex; align-items: center; gap: 5px; }
+.demo-btn {
+  cursor: pointer; min-width: 28px; height: 26px; padding: 0 7px;
+  background: #171b22; border: 1px solid #2b3441; color: #aeb9c6;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1;
+}
+.demo-btn:hover { border-color: #f0a83a; color: #f0a83a; }
+.demo-btn:disabled { opacity: .35; cursor: default; }
+.demo-btn:disabled:hover { border-color: #2b3441; color: #aeb9c6; }
+.demo-btn-exit { font-size: 9.5px; letter-spacing: .5px; }
+
+/* dim the workbench chrome that the demo is not pointing at */
+.demo-active .toolbar .tbtn:not(.demo-focus) { opacity: .45; }
+.demo-focus {
+  border-color: #f0a83a !important; color: #f0a83a !important; background: #1d1707 !important;
+}
+
+/* keep modals clear of the narration card while the demo is running */
+.demo-active .modal { max-height: 72vh; margin-bottom: 96px; }
