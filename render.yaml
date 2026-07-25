@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: mir-workbench
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/meta
+    autoDeploy: true
