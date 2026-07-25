@@ -124,6 +124,7 @@ function renderDiagnostics(diags) {
 function switchTab(name) {
   $$('.ctab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   $$('.cpanel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + name));
+  document.querySelector('.console-pane').classList.toggle('expanded', name === 'report');
 }
 $$('.ctab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 

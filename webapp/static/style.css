@@ -248,7 +248,9 @@ a:hover { color: #ffc45e; }
 .console-pane {
   height: 190px; flex: none; display: flex; flex-direction: column;
   border-top: 1px solid #232a34; background: #0b0e12;
+  transition: height .18s ease;
 }
+.console-pane.expanded { height: calc(100vh - 130px); }
 .console-tabs {
   height: 30px; flex: none; display: flex; align-items: center; gap: 16px;
   padding: 0 14px; border-bottom: 1px solid #1c222c; font-size: 10px;
