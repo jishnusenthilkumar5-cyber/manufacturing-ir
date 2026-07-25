@@ -396,7 +396,9 @@ def _render_buffers(factory: Factory, simulation: SimulationResult) -> str:
     )
     rows: list[str] = []
     for flow_id in flow_ids:
-        flow = flows[flow_id]
+        flow = flows.get(flow_id)
+        if flow is None:
+            raise ReportError(f"simulation reported unknown flow '{flow_id}'")
         metrics = summaries.get(flow_id)
         capacity = (
             "0 (synchronous)"

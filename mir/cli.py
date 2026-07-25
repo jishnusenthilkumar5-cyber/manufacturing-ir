@@ -48,6 +48,25 @@ def _load_validated(path: Path):
     return factory
 
 
+def _scenario(
+    horizon_h: float,
+    warmup_h: float,
+    seed: int,
+    replications: int,
+    dispatch: DispatchPolicy,
+) -> Scenario:
+    if warmup_h >= horizon_h:
+        typer.echo("error: --warmup-h must be less than --horizon-h", err=True)
+        raise typer.Exit(2)
+    return Scenario(
+        horizon_s=horizon_h * 3600.0,
+        warmup_s=warmup_h * 3600.0,
+        seed=seed,
+        replications=replications,
+        dispatch=dispatch,
+    )
+
+
 @app.command("validate")
 def validate_command(
     path: Path = typer.Argument(..., exists=True, dir_okay=False, readable=True),
@@ -224,13 +243,7 @@ def simulate_command(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         result = simulate(_load_validated(path), scenario)
     except (SimulationError, ValueError) as exc:
         typer.echo(f"error: {exc}", err=True)
@@ -268,13 +281,7 @@ def sweep_command(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         result = sweep(
             _load_validated(path),
             DesignSpace.from_json(space),
@@ -313,13 +320,7 @@ def recommend_command(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         result = recommend(
             _load_validated(path),
             DesignSpace.from_json(space),
@@ -356,13 +357,7 @@ def sensitivity_command(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         result = sensitivity(_load_validated(path), scenario, percent=percent)
     except (SimulationError, ValueError) as exc:
         typer.echo(f"error: {exc}", err=True)
@@ -396,13 +391,7 @@ def report_command(
         typer.echo(f"error: report {mode}", err=True)
         raise typer.Exit(2)
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         html = (
             render_comparison_report(
                 _load_validated(paths[0]),
@@ -458,13 +447,7 @@ def compare_command(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     try:
-        scenario = Scenario(
-            horizon_s=horizon_h * 3600.0,
-            warmup_s=warmup_h * 3600.0,
-            seed=seed,
-            replications=replications,
-            dispatch=dispatch,
-        )
+        scenario = _scenario(horizon_h, warmup_h, seed, replications, dispatch)
         report = compare_factories(
             _load_validated(baseline),
             _load_validated(variant),

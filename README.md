@@ -151,7 +151,7 @@ A design-space JSON object maps supported parameter paths to value lists. Suppor
 
 `mir report` writes one deterministic HTML file with inline CSS and JavaScript, topology SVG, state fractions, buffers, capacity, diagnostics, and scenario details. Compare mode renders the paired-seed verdict and before/after metrics. Reports make no network requests.
 
-`mir emit st` writes one vendor-neutral IEC 61131-3 Structured Text skeleton per machine plus `manifest.json`. The output is deliberately non-deployable, carries an explicit safety warning, and refuses a non-empty directory unless `--force` is supplied.
+`mir emit st` writes one vendor-neutral IEC 61131-3 Structured Text skeleton per machine plus `manifest.json`. The output is deliberately non-deployable, carries an explicit safety warning, and refuses a non-empty directory unless `--force` is supplied. When a machine has no `machine_state` enum signal, the state `TYPE` falls back to the simulator's seven-state vocabulary: `idle`, `running`, `blocked`, `starved`, `setup`, `down`, and `offshift`.
 
 ## Capacity semantics
 
