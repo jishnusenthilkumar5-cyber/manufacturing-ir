@@ -1,0 +1,62 @@
+initialize:
+  - name: "Install Python 3.11"
+    uses: github.com/actions/setup-python@v5
+    with:
+      python-version: "3.11"
+
+  - name: "Install Node.js 20 (webapp assets)"
+    uses: github.com/actions/setup-node@v4
+    with:
+      node-version: "20"
+
+  - name: "Create and persist a virtualenv"
+    run: |
+      python -m venv ~/.venv
+      echo 'PATH=$HOME/.venv/bin:$PATH' >> $ENVRC
+      ~/.venv/bin/python -m pip install --upgrade pip setuptools wheel
+
+maintenance:
+  - name: "Install manufacturing-ir with dev + web extras"
+    run: |
+      cd ~/repos/manufacturing-ir
+      pip install -e ".[dev,web]"
+
+  - name: "Verify the mir CLI entrypoint resolves"
+    run: |
+      cd ~/repos/manufacturing-ir
+      mir --help >/dev/null
+
+knowledge:
+  - name: test
+    contents: |
+      pytest
+      Config lives in pyproject.toml: testpaths = ["tests"], addopts = "-q".
+      Run from the repo root. Property-based tests use hypothesis.
+
+  - name: build
+    contents: |
+      python -m pip install --upgrade build && python -m build
+      Packaging is setuptools via pyproject.toml. Package discovery is
+      include = ["mir*"], and mir ships py.typed — keep type stubs intact.
+
+  - name: lint
+    contents: |
+      No linter is configured in this repo. Do not introduce ruff, black, or
+      flake8 as part of an unrelated change — match the surrounding style
+      instead. If asked to add linting, that is its own task.
+
+  - name: layout
+    contents: |
+      mir/       core IR package (the deliverable; ships py.typed)
+      webapp/    FastAPI + static JS/CSS frontend
+      tests/     pytest suite
+      examples/  sample IR documents
+      docs/      documentation
+      Dockerfile and render.yaml define the deployed service.
+
+  - name: conventions
+    contents: |
+      Python >= 3.11. Runtime deps are deliberately minimal (pydantic, typer) —
+      do not add runtime dependencies without being asked. FastAPI and uvicorn
+      are the "web" extra, not core. Bump VERSION and CHANGELOG.md for any
+      user-visible change.
